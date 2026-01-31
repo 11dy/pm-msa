@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/eureka-server/dy-infra.eureka-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/eureka-server/dy-infra.eureka-server.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/gateway/dy-infra.gateway.main.iml" filepath="$PROJECT_DIR$/.idea/modules/gateway/dy-infra.gateway.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/dy-msa.iml" filepath="$PROJECT_DIR$/.idea/dy-msa.iml" />
+    </modules>
+  </component>
+</project>
