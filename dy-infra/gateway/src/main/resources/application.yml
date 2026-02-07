@@ -12,11 +12,10 @@ spring:
             enabled: true
             lower-case-service-id: true
         routes:
-          # 예시: user-service 라우팅
-          # - id: user-service
-          #   uri: lb://USER-SERVICE
-          #   predicates:
-          #     - Path=/api/users/**
+          - id: dy-auth
+            uri: lb://DY-AUTH
+            predicates:
+              - Path=/api/auth/**
 
 eureka:
   client:
@@ -24,3 +23,6 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
   instance:
     prefer-ip-address: true
+
+jwt:
+  secret: ${JWT_SECRET:dy-msa-secret-key-for-jwt-token-generation-and-validation-minimum-256-bits}
