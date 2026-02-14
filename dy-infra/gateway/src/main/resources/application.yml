@@ -13,6 +13,14 @@ spring:
               uri: lb://DY-AUTH
               predicates:
                 - Path=/api/auth/**
+            - id: dy-auth-oauth2
+              uri: lb://DY-AUTH
+              predicates:
+                - Path=/oauth2/**
+            - id: dy-auth-login-oauth2
+              uri: lb://DY-AUTH
+              predicates:
+                - Path=/login/oauth2/**
 
 eureka:
   client:
