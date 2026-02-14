@@ -75,10 +75,11 @@ public class OAuth2Service {
             throw new AuthException("해당 소셜 계정은 이미 다른 사용자에게 연동되어 있습니다.", 409);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(AuthException::userNotFound);
+        if (!userRepository.existsById(userId)) {
+            throw AuthException.userNotFound();
+        }
 
-        UserAuth userAuth = UserAuth.createOAuthAuth(user, provider.name(), userInfo.getProviderId());
+        UserAuth userAuth = UserAuth.createOAuthAuth(userId, provider.name(), userInfo.getProviderId());
         userAuthRepository.save(userAuth);
 
         log.info("Social account linked: userId={}, provider={}", userId, provider);
@@ -120,7 +121,8 @@ public class OAuth2Service {
 
         if (existingAuth.isPresent()) {
             log.info("Existing OAuth user logged in: provider={}, email={}", provider, userInfo.getEmail());
-            return existingAuth.get().getUser();
+            return userRepository.findById(existingAuth.get().getUserId())
+                    .orElseThrow(AuthException::userNotFound);
         }
 
         String email = userInfo.getEmail();
@@ -132,7 +134,7 @@ public class OAuth2Service {
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
-            UserAuth newAuth = UserAuth.createOAuthAuth(user, provider.name(), userInfo.getProviderId());
+            UserAuth newAuth = UserAuth.createOAuthAuth(user.getId(), provider.name(), userInfo.getProviderId());
             userAuthRepository.save(newAuth);
             log.info("OAuth account linked to existing user: provider={}, email={}", provider, email);
             return user;
@@ -146,7 +148,7 @@ public class OAuth2Service {
 
         User savedUser = userRepository.save(newUser);
 
-        UserAuth newAuth = UserAuth.createOAuthAuth(savedUser, provider.name(), userInfo.getProviderId());
+        UserAuth newAuth = UserAuth.createOAuthAuth(savedUser.getId(), provider.name(), userInfo.getProviderId());
         userAuthRepository.save(newAuth);
 
         log.info("New OAuth user created: provider={}, email={}", provider, email);
@@ -162,7 +164,7 @@ public class OAuth2Service {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(refreshTokenExpirationMillis / 1000);
 
         RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .user(user)
+                .userId(user.getId())
                 .token(refreshToken)
                 .deviceInfo(deviceInfo)
                 .expiresAt(expiresAt)

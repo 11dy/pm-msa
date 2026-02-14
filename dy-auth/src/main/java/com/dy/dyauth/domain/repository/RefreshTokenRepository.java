@@ -13,11 +13,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByToken(String token);
 
-    @Query("SELECT rt FROM RefreshToken rt JOIN FETCH rt.user WHERE rt.token = :token")
-    Optional<RefreshToken> findByTokenWithUser(@Param("token") String token);
-
     @Modifying
-    @Query("DELETE FROM RefreshToken rt WHERE rt.user.id = :userId")
+    @Query("DELETE FROM RefreshToken rt WHERE rt.userId = :userId")
     void deleteByUserId(@Param("userId") Long userId);
 
     @Modifying

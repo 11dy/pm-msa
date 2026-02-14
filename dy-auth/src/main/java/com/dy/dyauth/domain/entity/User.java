@@ -27,6 +27,9 @@ public class User {
     @Column(nullable = false, length = 50)
     private String role;
 
+    @Column(name = "act_st", nullable = false, length = 20)
+    private String actSt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -34,10 +37,11 @@ public class User {
     private LocalDateTime updatedAt;
 
     @Builder
-    public User(String email, String userNm, String role) {
+    public User(String email, String userNm, String role, String actSt) {
         this.email = email;
         this.userNm = userNm;
         this.role = role != null ? role : "ROLE_USER";
+        this.actSt = actSt != null ? actSt : "ACTIVE";
     }
 
     @PrePersist
@@ -53,5 +57,17 @@ public class User {
 
     public void updateUserNm(String userNm) {
         this.userNm = userNm;
+    }
+
+    public void deactivate() {
+        this.actSt = "INACTIVE";
+    }
+
+    public void activate() {
+        this.actSt = "ACTIVE";
+    }
+
+    public boolean isActive() {
+        return "ACTIVE".equals(this.actSt);
     }
 }
