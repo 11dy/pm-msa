@@ -10,8 +10,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 
 @Slf4j
 @RestController
@@ -21,6 +25,9 @@ import org.springframework.web.bind.annotation.*;
 public class OAuth2Controller {
 
     private final OAuth2Service oAuth2Service;
+
+    @Value("${oauth2.frontend-callback-url:http://localhost:3000/oauth2/callback}")
+    private String frontendCallbackUrl;
 
     @GetMapping("/{provider}")
     @Operation(summary = "소셜 로그인 URL 조회", description = "지정된 소셜 로그인 제공자의 인증 URL을 반환합니다")
@@ -37,8 +44,8 @@ public class OAuth2Controller {
     }
 
     @GetMapping("/callback/{provider}")
-    @Operation(summary = "소셜 로그인 콜백", description = "소셜 로그인 인증 완료 후 콜백을 처리하고 JWT 토큰을 발급합니다")
-    public ResponseEntity<ApiResponse<TokenResponse>> callback(
+    @Operation(summary = "소셜 로그인 콜백", description = "소셜 로그인 인증 완료 후 프론트엔드로 리다이렉트합니다")
+    public ResponseEntity<Void> callback(
             @Parameter(description = "소셜 로그인 제공자 (google, kakao, naver)")
             @PathVariable String provider,
             @Parameter(description = "인증 코드")
@@ -50,9 +57,25 @@ public class OAuth2Controller {
 
         log.debug("Processing OAuth2 callback for provider: {}, code: {}", provider, code);
 
-        TokenResponse tokenResponse = oAuth2Service.processCallback(provider, code, deviceInfo);
+        try {
+            TokenResponse tokenResponse = oAuth2Service.processCallback(provider, code, deviceInfo);
 
-        return ResponseEntity.ok(ApiResponse.success("로그인 성공", tokenResponse));
+            String redirectUrl = frontendCallbackUrl +
+                    "#access_token=" + tokenResponse.getAccessToken() +
+                    "&refresh_token=" + tokenResponse.getRefreshToken() +
+                    "&token_type=" + tokenResponse.getTokenType() +
+                    "&expires_in=" + tokenResponse.getExpiresIn();
+
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(redirectUrl))
+                    .build();
+        } catch (Exception e) {
+            log.error("OAuth2 callback failed: {}", e.getMessage());
+            String errorUrl = frontendCallbackUrl + "#error=" + e.getMessage();
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(errorUrl))
+                    .build();
+        }
     }
 
     @PostMapping("/link/{provider}")

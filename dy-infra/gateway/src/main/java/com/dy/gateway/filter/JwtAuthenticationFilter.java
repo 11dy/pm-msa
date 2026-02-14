@@ -36,10 +36,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private SecretKey secretKey;
 
     private static final List<String> OPEN_ENDPOINTS = List.of(
-            "/api/auth/signup",
-            "/api/auth/login",
-            "/api/auth/refresh",
-            "/api/auth/oauth2"
+            "/api/auth",
+            "/oauth2",
+            "/login/oauth2"
     );
 
     @PostConstruct
