@@ -10,11 +10,10 @@ import java.util.Optional;
 
 public interface UserAuthRepository extends JpaRepository<UserAuth, Long> {
 
-    @Query("SELECT ua FROM UserAuth ua JOIN FETCH ua.user WHERE ua.user.email = :email AND ua.provider = 'LOCAL'")
+    @Query("SELECT ua FROM UserAuth ua WHERE ua.userId = (SELECT u.id FROM User u WHERE u.email = :email) AND ua.provider = 'LOCAL'")
     Optional<UserAuth> findLocalAuthByEmail(@Param("email") String email);
 
-    @Query("SELECT ua FROM UserAuth ua JOIN FETCH ua.user WHERE ua.provider = :provider AND ua.providerId = :providerId")
-    Optional<UserAuth> findByProviderAndProviderId(@Param("provider") String provider, @Param("providerId") String providerId);
+    Optional<UserAuth> findByProviderAndProviderId(String provider, String providerId);
 
     boolean existsByUserIdAndProvider(Long userId, String provider);
 

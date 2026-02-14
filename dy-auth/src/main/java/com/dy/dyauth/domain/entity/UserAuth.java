@@ -18,9 +18,8 @@ public class UserAuth {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false, length = 50)
     private String provider;
@@ -34,8 +33,8 @@ public class UserAuth {
     private LocalDateTime createdAt;
 
     @Builder
-    public UserAuth(User user, String provider, String providerId, String password) {
-        this.user = user;
+    public UserAuth(Long userId, String provider, String providerId, String password) {
+        this.userId = userId;
         this.provider = provider;
         this.providerId = providerId;
         this.password = password;
@@ -46,17 +45,17 @@ public class UserAuth {
         this.createdAt = LocalDateTime.now();
     }
 
-    public static UserAuth createLocalAuth(User user, String encodedPassword) {
+    public static UserAuth createLocalAuth(Long userId, String encodedPassword) {
         return UserAuth.builder()
-                .user(user)
+                .userId(userId)
                 .provider("LOCAL")
                 .password(encodedPassword)
                 .build();
     }
 
-    public static UserAuth createOAuthAuth(User user, String provider, String providerId) {
+    public static UserAuth createOAuthAuth(Long userId, String provider, String providerId) {
         return UserAuth.builder()
-                .user(user)
+                .userId(userId)
                 .provider(provider)
                 .providerId(providerId)
                 .build();

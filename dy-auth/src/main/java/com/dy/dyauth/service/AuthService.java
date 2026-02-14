@@ -48,7 +48,7 @@ public class AuthService {
         User savedUser = userRepository.save(user);
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        UserAuth userAuth = UserAuth.createLocalAuth(savedUser, encodedPassword);
+        UserAuth userAuth = UserAuth.createLocalAuth(savedUser.getId(), encodedPassword);
         userAuthRepository.save(userAuth);
 
         log.info("User signed up: {}", savedUser.getEmail());
@@ -65,7 +65,8 @@ public class AuthService {
             throw AuthException.invalidCredentials();
         }
 
-        User user = userAuth.getUser();
+        User user = userRepository.findById(userAuth.getUserId())
+                .orElseThrow(AuthException::userNotFound);
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
@@ -74,7 +75,7 @@ public class AuthService {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(refreshTokenExpirationMillis / 1000);
 
         RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .user(user)
+                .userId(user.getId())
                 .token(refreshToken)
                 .deviceInfo(request.getDeviceInfo())
                 .expiresAt(expiresAt)
@@ -89,7 +90,7 @@ public class AuthService {
 
     @Transactional
     public TokenResponse refreshToken(TokenRefreshRequest request) {
-        RefreshToken refreshTokenEntity = refreshTokenRepository.findByTokenWithUser(request.getRefreshToken())
+        RefreshToken refreshTokenEntity = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(AuthException::invalidRefreshToken);
 
         if (refreshTokenEntity.isExpired()) {
@@ -97,7 +98,8 @@ public class AuthService {
             throw AuthException.expiredRefreshToken();
         }
 
-        User user = refreshTokenEntity.getUser();
+        User user = userRepository.findById(refreshTokenEntity.getUserId())
+                .orElseThrow(AuthException::userNotFound);
 
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail(), user.getRole());
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId());

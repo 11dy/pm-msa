@@ -18,9 +18,8 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false, unique = true, length = 500)
     private String token;
@@ -35,8 +34,8 @@ public class RefreshToken {
     private LocalDateTime createdAt;
 
     @Builder
-    public RefreshToken(User user, String token, String deviceInfo, LocalDateTime expiresAt) {
-        this.user = user;
+    public RefreshToken(Long userId, String token, String deviceInfo, LocalDateTime expiresAt) {
+        this.userId = userId;
         this.token = token;
         this.deviceInfo = deviceInfo;
         this.expiresAt = expiresAt;
