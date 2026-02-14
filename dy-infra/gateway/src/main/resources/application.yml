@@ -7,15 +7,12 @@ spring:
   cloud:
     gateway:
       server:
-        discovery:
-          locator:
-            enabled: true
-            lower-case-service-id: true
-        routes:
-          - id: dy-auth
-            uri: lb://DY-AUTH
-            predicates:
-              - Path=/api/auth/**
+        webflux:
+          routes:
+            - id: dy-auth
+              uri: lb://DY-AUTH
+              predicates:
+                - Path=/api/auth/**
 
 eureka:
   client:

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserAuthRepository extends JpaRepository<UserAuth, Long> {
@@ -16,4 +17,6 @@ public interface UserAuthRepository extends JpaRepository<UserAuth, Long> {
     Optional<UserAuth> findByProviderAndProviderId(@Param("provider") String provider, @Param("providerId") String providerId);
 
     boolean existsByUserIdAndProvider(Long userId, String provider);
+
+    List<UserAuth> findAllByUserId(Long userId);
 }
