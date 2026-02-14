@@ -13,6 +13,11 @@ public class AuthException extends RuntimeException {
         this.status = status;
     }
 
+    public AuthException(String message, int statusCode) {
+        super(message);
+        this.status = HttpStatus.valueOf(statusCode);
+    }
+
     public static AuthException emailAlreadyExists() {
         return new AuthException("이미 사용 중인 이메일입니다", HttpStatus.CONFLICT);
     }
