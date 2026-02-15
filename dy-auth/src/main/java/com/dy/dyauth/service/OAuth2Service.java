@@ -127,7 +127,9 @@ public class OAuth2Service {
 
         String email = userInfo.getEmail();
         if (email == null || email.isBlank()) {
-            throw new AuthException("소셜 계정에서 이메일 정보를 가져올 수 없습니다.", 400);
+            // 이메일이 없는 경우 (카카오 등) provider_id 기반 임시 이메일 생성
+            email = provider.name().toLowerCase() + "_" + userInfo.getProviderId() + "@oauth.local";
+            log.info("Email not provided, generated temporary email: {}", email);
         }
 
         Optional<User> existingUser = userRepository.findByEmail(email);
