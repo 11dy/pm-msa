@@ -1,12 +1,13 @@
 'use client';
 
-import { env } from '@/shared/config/env';
 import { apiClient } from '@/shared/api';
 
+type Provider = 'google' | 'kakao' | 'naver';
+
 export function SocialLoginButtons() {
-  const handleGoogleLogin = async () => {
+  const handleSocialLogin = async (provider: Provider) => {
     try {
-      const response = await apiClient.get('api/auth/oauth2/google').json<{
+      const response = await apiClient.get(`api/auth/oauth2/${provider}`).json<{
         success: boolean;
         data: { authorizationUrl: string };
       }>();
@@ -15,16 +16,16 @@ export function SocialLoginButtons() {
         window.location.href = response.data.authorizationUrl;
       }
     } catch (error) {
-      console.error('Failed to get Google auth URL:', error);
+      console.error(`Failed to get ${provider} auth URL:`, error);
     }
   };
 
   return (
     <div className="space-y-3">
-      {/* Google - 활성화 */}
+      {/* Google */}
       <button
         type="button"
-        onClick={handleGoogleLogin}
+        onClick={() => handleSocialLogin('google')}
         className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -48,11 +49,11 @@ export function SocialLoginButtons() {
         <span className="text-sm font-medium text-gray-700">Google로 계속하기</span>
       </button>
 
-      {/* Kakao - 준비중 */}
+      {/* Kakao */}
       <button
         type="button"
-        disabled
-        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed opacity-50"
+        onClick={() => handleSocialLogin('kakao')}
+        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg bg-[#FEE500] hover:bg-[#FDD800] transition-colors"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
@@ -60,24 +61,22 @@ export function SocialLoginButtons() {
             d="M12 3C6.48 3 2 6.48 2 10.8c0 2.76 1.84 5.18 4.6 6.56-.2.72-.74 2.6-.84 3-.14.54.2.53.42.38.17-.12 2.7-1.84 3.8-2.58.66.1 1.34.14 2.02.14 5.52 0 10-3.48 10-7.8S17.52 3 12 3z"
           />
         </svg>
-        <span className="text-sm font-medium text-gray-400">Kakao로 계속하기</span>
-        <span className="text-xs text-gray-400">(준비중)</span>
+        <span className="text-sm font-medium text-[#3C1E1E]">Kakao로 계속하기</span>
       </button>
 
-      {/* Naver - 준비중 */}
+      {/* Naver */}
       <button
         type="button"
-        disabled
-        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed opacity-50"
+        onClick={() => handleSocialLogin('naver')}
+        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg bg-[#03C75A] hover:bg-[#02B350] transition-colors"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
-            fill="#5d5d5d"
+            fill="#FFFFFF"
             d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"
           />
         </svg>
-        <span className="text-sm font-medium text-gray-400">Naver로 계속하기</span>
-        <span className="text-xs text-gray-400">(준비중)</span>
+        <span className="text-sm font-medium text-white">Naver로 계속하기</span>
       </button>
     </div>
   );

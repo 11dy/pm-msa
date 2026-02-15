@@ -53,7 +53,6 @@ oauth2:
       user-info-uri: https://kapi.kakao.com/v2/user/me
       scope:
         - profile_nickname
-        - account_email
     naver:
       client-id: ${NAVER_CLIENT_ID}
       client-secret: ${NAVER_CLIENT_SECRET}
