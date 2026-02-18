@@ -9,16 +9,16 @@ spring:
       server:
         webflux:
           routes:
-            - id: dy-auth
-              uri: lb://DY-AUTH
+            - id: pm-auth
+              uri: lb://PM-AUTH
               predicates:
                 - Path=/api/auth/**
-            - id: dy-auth-oauth2
-              uri: lb://DY-AUTH
+            - id: pm-auth-oauth2
+              uri: lb://PM-AUTH
               predicates:
                 - Path=/oauth2/**
-            - id: dy-auth-login-oauth2
-              uri: lb://DY-AUTH
+            - id: pm-auth-login-oauth2
+              uri: lb://PM-AUTH
               predicates:
                 - Path=/login/oauth2/**
 

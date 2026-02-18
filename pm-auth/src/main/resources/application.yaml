@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: dy-auth
+    name: pm-auth
   datasource:
     url: jdbc:mysql://localhost:3306/dy_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
     username: ${DB_USERNAME:root}
@@ -29,7 +29,7 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: 1800000
   refresh-token-expiration: 604800000
-  issuer: dy-auth
+  issuer: pm-auth
 
 oauth2:
   providers:

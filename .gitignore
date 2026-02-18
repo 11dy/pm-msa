@@ -10,8 +10,9 @@
 *.ipr
 .vscode/
 
-# Claude
+# Claude / AI
 *.claude
+.ai/
 
 # Environment variables
 .env
