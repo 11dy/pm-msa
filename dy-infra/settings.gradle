@@ -1,4 +1,0 @@
-rootProject.name = 'dy-infra'
-
-include 'eureka-server'
-include 'gateway'
