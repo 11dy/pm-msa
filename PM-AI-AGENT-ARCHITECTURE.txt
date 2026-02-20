@@ -1,0 +1,1038 @@
+================================================================================
+                    PM-MSA Personal AI Agent Service 설계서
+                         (Kafka 적용 버전)
+================================================================================
+
+작성일: 2026-02-18
+버전: 1.0
+
+================================================================================
+1. 개요
+================================================================================
+
+MSA 기반의 개인 맞춤형 AI Agent 서비스
+- 다양한 문서(PDF, Excel, Word, HWP, 이미지) 처리
+- RAG 기반 LLM으로 사용자 질의 응답
+- 작업 흐름을 그래프로 시각화
+- Kafka를 통한 이벤트 기반 비동기 처리
+
+================================================================================
+2. 기술 스택 선택
+================================================================================
+
+┌─────────────────┬─────────────────────────────┬─────────────────────────────┐
+│ 항목            │ 선택                        │ 근거                        │
+├─────────────────┼─────────────────────────────┼─────────────────────────────┤
+│ LLM Provider    │ OpenAI API (GPT-4o)         │ 범용성, 안정성              │
+│ Vector DB       │ Supabase Cloud (pgvector)   │ 관리형, 무료 플랜 가용      │
+│ File Storage    │ Supabase Storage            │ Vector DB와 통합            │
+│ Message Broker  │ Apache Kafka                │ 문서 파이프라인, 이벤트     │
+│ 그래프          │ LangGraph + ReactFlow       │ 상태 기반 에이전트 + 시각화 │
+│ Python 패키지   │ pip + venv                  │ 단순함, 표준 도구           │
+│ 배포            │ Local (Docker Compose)      │ 개발/테스트 우선            │
+└─────────────────┴─────────────────────────────┴─────────────────────────────┘
+
+================================================================================
+3. 모듈 구조
+================================================================================
+
+pm-msa/
+├── pm-infra/              # [기존] Eureka, Gateway
+│   ├── eureka-server/     # 서비스 디스커버리 (포트 8761)
+│   └── gateway/           # API Gateway (포트 8080)
+├── pm-auth/               # [기존] 인증 서비스 (Java, 포트 8081)
+├── pm-document/           # [신규] 문서 처리 서비스 (Python, 포트 8082)
+├── pm-agent/              # [신규] RAG/LLM 서비스 (Python, 포트 8083)
+├── pm-workflow/           # [신규] 워크플로우 관리 (Java, 포트 8084)
+├── pm-web/                # [확장] 프론트엔드 (Next.js, 포트 3000)
+└── docker-compose.yml     # [신규] 로컬 개발 환경
+
+================================================================================
+4. 모듈별 상세
+================================================================================
+
+┌─────────────┬─────────────────┬──────┬───────────────────────────────────────┐
+│ 모듈        │ 언어            │ 포트 │ 역할                                  │
+├─────────────┼─────────────────┼──────┼───────────────────────────────────────┤
+│ pm-document │ Python/FastAPI  │ 8082 │ 문서 업로드, 파싱, 텍스트 추출, OCR   │
+│ pm-agent    │ Python/FastAPI  │ 8083 │ LLM 호출, RAG 파이프라인, 임베딩      │
+│ pm-workflow │ Java/Spring     │ 8084 │ Agent 설정, 대화 이력, 워크플로우     │
+└─────────────┴─────────────────┴──────┴───────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+4.1 pm-document (Python)
+--------------------------------------------------------------------------------
+- Python 3.12+ / pip + venv
+- FastAPI 0.115.x
+- py-eureka-client (서비스 등록)
+- PyMuPDF (PDF), python-docx (Word), openpyxl (Excel), pyhwp (한글)
+- Pillow + pytesseract (OCR)
+- Supabase Storage (파일 저장)
+- confluent-kafka (Kafka Producer)
+
+requirements.txt:
+  fastapi>=0.115.0
+  uvicorn>=0.30.0
+  py-eureka-client>=0.11.0
+  PyMuPDF>=1.24.0
+  python-docx>=1.1.0
+  openpyxl>=3.1.0
+  pyhwp>=0.1.0
+  Pillow>=10.0.0
+  pytesseract>=0.3.0
+  supabase>=2.0.0
+  confluent-kafka>=2.3.0
+  python-multipart>=0.0.9
+
+--------------------------------------------------------------------------------
+4.2 pm-agent (Python) - RAG & AI Agent
+--------------------------------------------------------------------------------
+- Python 3.12+ / pip + venv
+- FastAPI 0.115.x
+- LangChain 0.3.x, LangGraph 0.2.x
+- OpenAI SDK
+- Supabase Python SDK (pgvector + Storage)
+- confluent-kafka (Kafka Consumer/Producer)
+- SSE (스트리밍 응답)
+
+requirements.txt:
+  # Core Framework
+  fastapi>=0.115.0
+  uvicorn>=0.30.0
+  python-dotenv>=1.0.0
+  # LangChain
+  langchain>=0.3.0
+  langchain-openai>=0.2.0
+  langchain-community>=0.3.0
+  langgraph>=0.2.0
+  # LLM & Embeddings
+  openai>=1.0.0
+  # Retriever
+  rank-bm25>=0.2.2
+  # Reranker
+  sentence-transformers>=2.2.0
+  # Vector Store
+  supabase>=2.0.0
+  # Kafka
+  confluent-kafka>=2.3.0
+  # Streaming
+  sse-starlette>=2.0.0
+  # Service Discovery
+  py-eureka-client>=0.11.0
+  # Utils
+  pydantic>=2.0.0
+  python-multipart>=0.0.9
+
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.1 프로젝트 구조
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+pm-agent/
+├── app/
+│   ├── main.py                    # FastAPI 앱 진입점
+│   ├── config.py                  # 환경설정 (OpenAI, Supabase, Kafka 등)
+│   │
+│   ├── chains/                    # LCEL 체인
+│   │   ├── rag_chain.py          # RAG 체인 (검색 + 생성)
+│   │   ├── summary_chain.py      # 요약 체인
+│   │   └── routing_chain.py      # 쿼리 라우팅 체인
+│   │
+│   ├── prompts/                   # 프롬프트 템플릿
+│   │   ├── rag_prompt.py         # RAG용 시스템/유저 프롬프트
+│   │   ├── agent_prompt.py       # Agent 시스템 프롬프트
+│   │   └── fewshot_examples.py   # Few-shot 예시 모음
+│   │
+│   ├── retrievers/                # 검색기 (Retriever)
+│   │   ├── base_retriever.py     # 기본 벡터 검색기
+│   │   ├── ensemble_retriever.py # BM25 + Vector 앙상블 검색기
+│   │   ├── multi_query.py        # MultiQueryRetriever (쿼리 확장)
+│   │   └── parent_document.py    # ParentDocumentRetriever (상위 문서 반환)
+│   │
+│   ├── embeddings/                # 임베딩
+│   │   ├── openai_embeddings.py  # OpenAI text-embedding-3-small
+│   │   └── cached_embeddings.py  # 캐시 기반 임베딩 (중복 방지)
+│   │
+│   ├── vectorstore/               # 벡터 저장소
+│   │   └── supabase_store.py     # Supabase pgvector 연동
+│   │
+│   ├── splitters/                 # 텍스트 분할기
+│   │   ├── recursive_splitter.py # RecursiveCharacterTextSplitter
+│   │   └── semantic_splitter.py  # SemanticChunker (의미 기반 분할)
+│   │
+│   ├── rerankers/                 # 리랭커 (검색 결과 재정렬)
+│   │   └── cross_encoder.py      # Cross-Encoder Reranker
+│   │
+│   ├── parsers/                   # 출력 파서
+│   │   ├── pydantic_parser.py    # PydanticOutputParser
+│   │   └── json_parser.py        # JsonOutputParser
+│   │
+│   ├── tools/                     # 에이전트 도구 (Tool)
+│   │   ├── search_tool.py        # 벡터 검색 도구
+│   │   ├── web_search_tool.py    # 웹 검색 도구 (Tavily/DuckDuckGo)
+│   │   └── calculator_tool.py    # 계산기 도구
+│   │
+│   ├── agents/                    # 에이전트
+│   │   ├── base_agent.py         # 기본 ReAct Agent
+│   │   └── agentic_rag.py        # Agentic RAG (도구 기반 RAG)
+│   │
+│   ├── graphs/                    # LangGraph 워크플로우
+│   │   ├── nodes/                 # 그래프 노드 정의
+│   │   │   ├── query_router.py   # 쿼리 분류 노드
+│   │   │   ├── retriever_node.py # 검색 노드
+│   │   │   ├── generator_node.py # 생성 노드
+│   │   │   ├── grader_node.py    # 문서 관련성 평가 노드
+│   │   │   └── rewrite_node.py   # 쿼리 재작성 노드
+│   │   ├── states/
+│   │   │   └── rag_state.py      # RAGState TypedDict
+│   │   ├── rag_graph.py          # Naive RAG 그래프
+│   │   ├── adaptive_rag.py       # Adaptive RAG (폴백 포함)
+│   │   └── agentic_rag_graph.py  # Agentic RAG 그래프
+│   │
+│   ├── kafka/                     # Kafka 이벤트
+│   │   ├── producer.py           # 이벤트 발행
+│   │   └── consumer.py           # 이벤트 구독
+│   │
+│   ├── api/                       # API 라우터
+│   │   ├── chat.py               # /api/chat/* 엔드포인트
+│   │   ├── agent.py              # /api/agent/* 엔드포인트
+│   │   └── health.py             # 헬스체크
+│   │
+│   └── services/                  # 비즈니스 로직
+│       ├── chat_service.py       # 채팅 서비스
+│       └── embedding_service.py  # 임베딩 서비스
+│
+├── requirements.txt
+├── Dockerfile
+└── README.md
+
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.2 모듈별 상세
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+[chains/] LCEL 체인
+- rag_chain.py: 검색 → 컨텍스트 조합 → LLM 생성 체인
+- summary_chain.py: 문서/대화 요약 체인
+- routing_chain.py: 질문 유형에 따른 분기 체인
+- 주요 컴포넌트: RunnablePassthrough, RunnableParallel, RunnableLambda
+
+[prompts/] 프롬프트 템플릿
+- ChatPromptTemplate, FewShotChatMessagePromptTemplate, PromptTemplate
+
+[retrievers/] 검색기
+- base_retriever: 기본 벡터 유사도 검색 (k=5, cosine similarity)
+- ensemble_retriever: BM25 50% + Vector 50% 가중치 조합
+- multi_query: LLM으로 쿼리 3~5개 변형 후 검색 결과 통합
+- parent_document: 작은 청크로 검색, 큰 청크 반환
+
+[embeddings/] 임베딩
+- OpenAI text-embedding-3-small (1536차원)
+- 캐시 기반 중복 임베딩 방지 (Redis/메모리)
+
+[vectorstore/] 벡터 저장소
+- Supabase pgvector (HNSW 인덱스, match_document_chunks RPC)
+
+[splitters/] 텍스트 분할기
+- recursive_splitter: chunk_size=1000, overlap=200, separators=["\n\n","\n"," ",""]
+- semantic_splitter: 의미 유사도 기반 분할 (임베딩 활용)
+
+[rerankers/] 리랭커
+- Cross-Encoder (BAAI/bge-reranker-v2-m3), top_n=3
+
+[tools/] 에이전트 도구
+- search_tool: 벡터 검색 (RAG용)
+- web_search_tool: 웹 검색 (Tavily/DuckDuckGo)
+- calculator_tool: 수학 계산
+- 정의 방식: @tool 데코레이터, StructuredTool, BaseTool 상속
+
+[agents/] 에이전트
+- ReAct Agent: 추론 → 행동 → 관찰 반복
+- Agentic RAG: 필요시에만 검색 도구 호출
+
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.3 LangGraph 워크플로우
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+그래프 노드:
+- query_router: 질문 분류 (RAG 필요 여부)
+- retriever_node: 벡터 검색 실행
+- grader_node: 문서 관련성 평가
+- rewrite_node: 쿼리 재작성
+- generator_node: LLM 응답 생성
+
+(A) Naive RAG Graph
+[질문] → [검색] → [생성] → [응답]
+단순 파이프라인, 폴백 없음
+
+(B) Adaptive RAG Graph
+[질문]
+   ↓
+[검색] ─────────────────┐
+   ↓                    │
+[문서 평가]              │
+   ↓                    │
+┌──┴──┐                 │
+↓     ↓                 │
+관련  비관련             │
+↓     ↓                 │
+│   [쿼리 재작성] ───────┘
+│     ↓
+│   [웹 검색]
+│     ↓
+└──►[생성]
+      ↓
+   [응답]
+
+분기 조건:
+- 관련 문서 존재 → 생성
+- 관련 문서 없음 + 재시도 < 2 → 쿼리 재작성 후 재검색
+- 관련 문서 없음 + 재시도 >= 2 → 웹 검색 폴백
+
+(C) Agentic RAG Graph
+[질문]
+   ↓
+[쿼리 분류]
+   ↓
+┌──┴──┐
+↓     ↓
+단순  RAG필요
+↓     ↓
+│   [Agent]
+│     ↓
+│   도구 호출 (검색, 웹검색, 계산 등)
+│     ↓
+│   [반복 또는 종료]
+│     ↓
+└──►[생성]
+      ↓
+   [응답]
+
+Agent가 자율적으로 필요한 도구 선택
+
+--------------------------------------------------------------------------------
+4.3 pm-workflow (Java)
+--------------------------------------------------------------------------------
+- Spring Boot 4.0.2
+- Spring Data JPA
+- Spring Kafka (Kafka Consumer)
+- Spring WebSocket (실시간 알림)
+- MySQL
+
+build.gradle 의존성:
+  implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'org.springframework.kafka:spring-kafka'
+  implementation 'org.springframework.boot:spring-boot-starter-websocket'
+  implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+  runtimeOnly 'com.mysql:mysql-connector-j'
+
+================================================================================
+5. 데이터베이스 설계
+================================================================================
+
+DB 전략:
+- WAS용 DB: 로컬 Docker MySQL (pm-auth → dy_db, pm-workflow → pm_workflow)
+- AI/RAG용 DB: Supabase Cloud PostgreSQL + pgvector (pm-agent, pm-document)
+- 테이블 생성: JPA ddl-auto: update (MySQL), SQL 직접 실행 (Supabase)
+
+--------------------------------------------------------------------------------
+5.1 MySQL (pm-workflow) - pm_workflow 데이터베이스
+--------------------------------------------------------------------------------
+
+-- 에이전트 설정 테이블
+CREATE TABLE agents (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    system_prompt TEXT NOT NULL,
+    model VARCHAR(50) DEFAULT 'gpt-4o',
+    temperature DECIMAL(3,2) DEFAULT 0.7,
+    max_tokens INT DEFAULT 4096,
+    tools JSON,
+    is_default BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id)
+);
+
+-- 대화 세션 테이블
+CREATE TABLE conversations (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    agent_id BIGINT NOT NULL,
+    title VARCHAR(255),
+    summary TEXT,
+    status ENUM('ACTIVE', 'ARCHIVED', 'DELETED') DEFAULT 'ACTIVE',
+    message_count INT DEFAULT 0,
+    last_message_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_agent_id (agent_id)
+);
+
+-- 메시지 이력 테이블
+CREATE TABLE messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    role ENUM('USER', 'ASSISTANT', 'SYSTEM', 'TOOL') NOT NULL,
+    content TEXT NOT NULL,
+    metadata JSON,
+    token_count INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_conversation_id (conversation_id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+-- 문서 메타데이터 테이블
+CREATE TABLE documents (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_type VARCHAR(20) NOT NULL,
+    file_size BIGINT NOT NULL,
+    storage_path VARCHAR(500) NOT NULL,
+    status ENUM('UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED') DEFAULT 'UPLOADED',
+    chunk_count INT DEFAULT 0,
+    error_message TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status)
+);
+
+-- 에이전트-문서 연결 테이블
+CREATE TABLE agent_documents (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    agent_id BIGINT NOT NULL,
+    document_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_agent_document (agent_id, document_id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
+-- 워크플로우 실행 이력 테이블
+CREATE TABLE workflow_executions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    message_id BIGINT,
+    workflow_type VARCHAR(50) NOT NULL,
+    status ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED') DEFAULT 'PENDING',
+    graph_state JSON,
+    nodes_executed JSON,
+    error_message TEXT,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_conversation_id (conversation_id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+--------------------------------------------------------------------------------
+5.2 Supabase (PostgreSQL + pgvector)
+--------------------------------------------------------------------------------
+
+-- pgvector 확장 활성화
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 문서 청크 + 임베딩 테이블
+CREATE TABLE document_chunks (
+    id BIGSERIAL PRIMARY KEY,
+    document_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    chunk_index INT NOT NULL,
+    content TEXT NOT NULL,
+    embedding VECTOR(1536),
+    metadata JSONB DEFAULT '{}',
+    token_count INT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_document_chunk UNIQUE (document_id, chunk_index)
+);
+
+-- HNSW 인덱스 (빠른 유사도 검색)
+CREATE INDEX ON document_chunks
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+CREATE INDEX idx_chunks_user_id ON document_chunks(user_id);
+CREATE INDEX idx_chunks_document_id ON document_chunks(document_id);
+
+-- 유사도 검색 함수
+CREATE OR REPLACE FUNCTION match_document_chunks(
+    query_embedding VECTOR(1536),
+    match_threshold FLOAT,
+    match_count INT,
+    filter_user_id BIGINT,
+    filter_document_ids BIGINT[] DEFAULT NULL
+)
+RETURNS TABLE (
+    id BIGINT,
+    document_id BIGINT,
+    content TEXT,
+    metadata JSONB,
+    similarity FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        dc.id,
+        dc.document_id,
+        dc.content,
+        dc.metadata,
+        1 - (dc.embedding <=> query_embedding) AS similarity
+    FROM document_chunks dc
+    WHERE dc.user_id = filter_user_id
+        AND (filter_document_ids IS NULL OR dc.document_id = ANY(filter_document_ids))
+        AND 1 - (dc.embedding <=> query_embedding) > match_threshold
+    ORDER BY dc.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
+
+================================================================================
+6. API 설계
+================================================================================
+
+--------------------------------------------------------------------------------
+6.1 Gateway 라우팅 추가 (application.yml)
+--------------------------------------------------------------------------------
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # 기존 라우트
+            - id: pm-auth
+              uri: lb://PM-AUTH
+              predicates:
+                - Path=/api/auth/**
+
+            # 신규 라우트
+            - id: pm-document
+              uri: lb://PM-DOCUMENT
+              predicates:
+                - Path=/api/documents/**
+
+            - id: pm-agent
+              uri: lb://PM-AGENT
+              predicates:
+                - Path=/api/agent/**
+
+            - id: pm-agent-chat
+              uri: lb://PM-AGENT
+              predicates:
+                - Path=/api/chat/**
+
+            - id: pm-workflow
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/workflows/**
+
+            - id: pm-workflow-conversations
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/conversations/**
+
+            - id: pm-workflow-agents
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/agents/**
+
+--------------------------------------------------------------------------------
+6.2 주요 API 엔드포인트
+--------------------------------------------------------------------------------
+
+[pm-document]
+POST   /api/documents/upload           # 문서 업로드
+GET    /api/documents                  # 문서 목록
+GET    /api/documents/{id}             # 문서 상세
+DELETE /api/documents/{id}             # 문서 삭제
+GET    /api/documents/{id}/status      # 처리 상태
+POST   /api/documents/{id}/reprocess   # 재처리
+
+[pm-agent]
+POST   /api/chat/message               # 채팅 (SSE 스트리밍)
+POST   /api/chat/message/sync          # 채팅 (동기)
+POST   /api/agent/search               # 벡터 검색
+POST   /api/agent/embed                # 임베딩 생성
+
+[pm-workflow]
+GET    /api/agents                     # 에이전트 목록
+POST   /api/agents                     # 에이전트 생성
+GET    /api/agents/{id}                # 에이전트 상세
+PUT    /api/agents/{id}                # 에이전트 수정
+DELETE /api/agents/{id}                # 에이전트 삭제
+
+GET    /api/conversations              # 대화 목록
+POST   /api/conversations              # 대화 생성
+GET    /api/conversations/{id}         # 대화 상세 (메시지 포함)
+DELETE /api/conversations/{id}         # 대화 삭제
+
+GET    /api/workflows/executions/{id}       # 실행 상세
+GET    /api/workflows/executions/{id}/graph # 그래프 시각화 데이터
+
+================================================================================
+7. Kafka 이벤트 설계
+================================================================================
+
+--------------------------------------------------------------------------------
+7.1 Topics
+--------------------------------------------------------------------------------
+
+┌───────────────────────┬────────────────────────────────────────────────────┐
+│ Topic                 │ 용도                                               │
+├───────────────────────┼────────────────────────────────────────────────────┤
+│ pm.document.events    │ 문서 처리 파이프라인 이벤트                        │
+│ pm.workflow.events    │ 워크플로우 실행 이벤트                             │
+└───────────────────────┴────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+7.2 문서 처리 파이프라인 이벤트
+--------------------------------------------------------------------------------
+
+이벤트 흐름:
+[사용자 업로드] → pm-document → Kafka → pm-agent → Kafka → pm-workflow
+
+┌───────────────────────────┬─────────────┬─────────────┬─────────────────────┐
+│ 이벤트                    │ Producer    │ Consumer    │ Payload             │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ document.uploaded         │ pm-document │ pm-agent    │ {documentId,        │
+│                           │             │             │  userId, fileType,  │
+│                           │             │             │  storagePath}       │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ document.chunked          │ pm-document │ pm-agent    │ {documentId,        │
+│                           │             │             │  chunks: [{index,   │
+│                           │             │             │  content}]}         │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ document.embedding.started│ pm-agent    │ pm-workflow │ {documentId,        │
+│                           │             │             │  totalChunks}       │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ document.embedding.       │ pm-agent    │ pm-workflow │ {documentId,        │
+│ completed                 │             │             │  embeddingCount}    │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ document.failed           │ pm-document │ pm-workflow │ {documentId,        │
+│                           │ / pm-agent  │             │  error, stage}      │
+└───────────────────────────┴─────────────┴─────────────┴─────────────────────┘
+
+--------------------------------------------------------------------------------
+7.3 워크플로우 이벤트 추적
+--------------------------------------------------------------------------------
+
+이벤트 흐름:
+[채팅 요청] → pm-agent (LangGraph) → Kafka → pm-workflow → WebSocket → pm-web
+
+┌───────────────────────────┬─────────────┬─────────────┬─────────────────────┐
+│ 이벤트                    │ Producer    │ Consumer    │ Payload             │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ workflow.started          │ pm-agent    │ pm-workflow │ {executionId,       │
+│                           │             │             │  conversationId,    │
+│                           │             │             │  workflowType}      │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ workflow.node.entered     │ pm-agent    │ pm-workflow │ {executionId,       │
+│                           │             │             │  nodeId, nodeName,  │
+│                           │             │             │  timestamp}         │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ workflow.node.exited      │ pm-agent    │ pm-workflow │ {executionId,       │
+│                           │             │             │  nodeId, duration,  │
+│                           │             │             │  output}            │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ workflow.completed        │ pm-agent    │ pm-workflow │ {executionId,       │
+│                           │             │             │  totalDuration,     │
+│                           │             │             │  nodesExecuted}     │
+├───────────────────────────┼─────────────┼─────────────┼─────────────────────┤
+│ workflow.failed           │ pm-agent    │ pm-workflow │ {executionId,       │
+│                           │             │             │  nodeId, error}     │
+└───────────────────────────┴─────────────┴─────────────┴─────────────────────┘
+
+--------------------------------------------------------------------------------
+7.4 Consumer Groups
+--------------------------------------------------------------------------------
+
+┌───────────────────┬─────────────┬─────────────────────────────────────────┐
+│ Group ID          │ 서비스      │ 구독 Topics                             │
+├───────────────────┼─────────────┼─────────────────────────────────────────┤
+│ pm-agent-group    │ pm-agent    │ pm.document.events                      │
+│ pm-workflow-group │ pm-workflow │ pm.document.events, pm.workflow.events  │
+└───────────────────┴─────────────┴─────────────────────────────────────────┘
+
+================================================================================
+8. 인프라 (Docker Compose)
+================================================================================
+
+--------------------------------------------------------------------------------
+8.1 로컬 Docker 서비스
+--------------------------------------------------------------------------------
+
+┌──────────────┬───────────────────────────────────┬──────────────┐
+│ 서비스       │ 이미지                            │ 포트         │
+├──────────────┼───────────────────────────────────┼──────────────┤
+│ MySQL        │ mysql:8.0                         │ 3306         │
+│ Redis        │ redis:7-alpine                    │ 6379         │
+│ Zookeeper    │ confluentinc/cp-zookeeper:7.5.0   │ 2181         │
+│ Kafka        │ confluentinc/cp-kafka:7.5.0       │ 9092         │
+│ Kafka UI     │ provectuslabs/kafka-ui            │ 8090         │
+└──────────────┴───────────────────────────────────┴──────────────┘
+
+--------------------------------------------------------------------------------
+8.2 docker-compose.yml
+--------------------------------------------------------------------------------
+
+services:
+  # ============ 데이터베이스 ============
+  mysql:
+    image: mysql:8.0
+    container_name: pm-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # infra/init-db.sql:
+    #   CREATE DATABASE IF NOT EXISTS dy_db;
+    #   CREATE DATABASE IF NOT EXISTS pm_workflow;
+    # 테이블은 JPA ddl-auto: update로 자동 생성
+
+  redis:
+    image: redis:7-alpine
+    container_name: pm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ============ Kafka ============
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pm-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pm-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    # INTERNAL(29092): Docker 내부 컨테이너 간 통신
+    # EXTERNAL(9092): 로컬 호스트에서 직접 접속 (IDE 개발 시)
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: pm-kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pm-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+  # ============ 인프라 서비스 ============
+  eureka-server:
+    build: ./pm-infra/eureka-server
+    container_name: pm-eureka
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build: ./pm-infra/gateway
+    container_name: pm-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # ============ 애플리케이션 서비스 ============
+  pm-auth:
+    build: ./pm-auth
+    container_name: pm-auth
+    ports:
+      - "8081:8081"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dy_db
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  pm-document:
+    build: ./pm-document
+    container_name: pm-document
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_SERVICE_KEY}
+    depends_on:
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-agent:
+    build: ./pm-agent
+    container_name: pm-agent
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_SERVICE_KEY}
+    depends_on:
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-workflow:
+    build: ./pm-workflow
+    container_name: pm-workflow
+    ports:
+      - "8084:8084"
+    environment:
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pm_workflow
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-web:
+    build: ./pm-web
+    container_name: pm-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - gateway
+
+volumes:
+  mysql_data:
+  redis_data:
+
+--------------------------------------------------------------------------------
+8.3 Supabase Cloud (외부 서비스)
+--------------------------------------------------------------------------------
+
+서비스:
+- PostgreSQL + pgvector: 벡터 임베딩 저장/검색
+- Storage: 문서 파일 저장
+
+================================================================================
+9. 환경변수 (.env)
+================================================================================
+
+# Database
+DB_USERNAME=root
+DB_PASSWORD=your_password_here
+
+# JWT
+JWT_SECRET=your_256_bit_secret_key_here
+
+# OpenAI
+OPENAI_API_KEY=sk-your_openai_api_key_here
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_SERVICE_KEY=your_service_key_here
+
+# OAuth (기존)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+KAKAO_CLIENT_ID=your_kakao_client_id
+KAKAO_CLIENT_SECRET=your_kakao_client_secret
+
+================================================================================
+10. 프론트엔드 확장 (pm-web)
+================================================================================
+
+--------------------------------------------------------------------------------
+10.1 신규 페이지
+--------------------------------------------------------------------------------
+
+/agents              - 에이전트 관리
+/agents/new          - 에이전트 생성
+/agents/{id}         - 에이전트 상세/수정
+/chat                - 채팅 인터페이스 (기본 에이전트)
+/chat/{conversationId} - 특정 대화
+/documents           - 문서 라이브러리
+/documents/{id}      - 문서 상세
+/workflows/{id}      - 워크플로우 시각화
+
+--------------------------------------------------------------------------------
+10.2 신규 의존성 (package.json)
+--------------------------------------------------------------------------------
+
+{
+  "dependencies": {
+    "@xyflow/react": "^12.0.0",
+    "react-markdown": "^9.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "@stomp/stompjs": "^7.0.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.400.0"
+  }
+}
+
+참고:
+- reactflow → @xyflow/react (v12부터 패키지명 변경)
+- socket.io-client → @stomp/stompjs (Spring WebSocket STOMP 호환)
+  pm-workflow가 Spring WebSocket을 사용하므로 프로토콜 통일
+
+================================================================================
+11. 구현 순서
+================================================================================
+
+Phase 1: 기반 구축
+--------------------------------------------------------------------------------
+1. Docker Compose 환경 구성 (MySQL, Redis, Kafka, Zookeeper, Kafka UI)
+   - infra/init-db.sql 작성 (dy_db, pm_workflow 데이터베이스 생성)
+   - Supabase Cloud 설정 (pgvector 확장, document_chunks 테이블, RPC 함수)
+2. Kafka Topics 생성 및 설정
+3. pm-workflow 기본 구조 (Agent/Conversation CRUD + Kafka Consumer)
+5. Gateway 라우팅 및 JwtAuthenticationFilter 오픈 엔드포인트 업데이트
+
+Phase 2: 문서 처리
+--------------------------------------------------------------------------------
+6. pm-document 서비스 (업로드, 파싱, Kafka Producer)
+7. pm-agent 임베딩 생성 (Kafka Consumer/Producer)
+8. 문서 파이프라인 이벤트 흐름 테스트
+
+Phase 3: AI Agent
+--------------------------------------------------------------------------------
+9. pm-agent RAG 파이프라인
+10. LangGraph 워크플로우 + 이벤트 발행
+11. SSE 스트리밍
+
+Phase 4: 프론트엔드
+--------------------------------------------------------------------------------
+12. 문서 관리 UI
+13. 채팅 인터페이스
+14. 워크플로우 시각화 (실시간 WebSocket)
+
+================================================================================
+12. 수정 필요 파일 (기존 프로젝트)
+================================================================================
+
+1. pm-infra/gateway/src/main/resources/application.yml
+   - 신규 서비스 라우팅 추가
+
+2. pm-infra/gateway/.../JwtAuthenticationFilter.java
+   - OPEN_ENDPOINTS에 헬스체크 경로 추가 (/health, /actuator/health)
+   - 인증 필요 여부 검토: /api/documents/**, /api/chat/** 등은 인증 필수 유지
+
+3. pm-web/package.json
+   - 신규 의존성 추가
+
+4. .env
+   - OPENAI_API_KEY, SUPABASE_* 환경변수 추가
+
+================================================================================
+13. 포트 요약
+================================================================================
+
+┌─────────────────┬───────┬─────────────────────────────────────────────────┐
+│ 서비스          │ 포트  │ 설명                                            │
+├─────────────────┼───────┼─────────────────────────────────────────────────┤
+│ Eureka Server   │ 8761  │ 서비스 디스커버리 대시보드                      │
+│ Gateway         │ 8080  │ API 진입점                                      │
+│ pm-auth         │ 8081  │ 인증 서비스                                     │
+│ pm-document     │ 8082  │ 문서 처리 서비스                                │
+│ pm-agent        │ 8083  │ RAG/LLM 에이전트 서비스                         │
+│ pm-workflow     │ 8084  │ 워크플로우 관리 서비스                          │
+│ pm-web          │ 3000  │ 프론트엔드                                      │
+│ MySQL           │ 3306  │ 관계형 데이터베이스                             │
+│ Redis           │ 6379  │ 캐시                                            │
+│ Zookeeper       │ 2181  │ Kafka 코디네이터                                │
+│ Kafka (외부)    │ 9092  │ 메시지 브로커 (호스트 접속용)                    │
+│ Kafka (내부)    │ 29092 │ 메시지 브로커 (Docker 내부 통신)                 │
+│ Kafka UI        │ 8090  │ Kafka 모니터링 대시보드                         │
+└─────────────────┴───────┴─────────────────────────────────────────────────┘
+
+================================================================================
+14. 확장 가능 영역
+================================================================================
+
+1. 추가 검색 전략
+   - HyDE (Hypothetical Document Embeddings)
+   - Self-Query Retriever (메타데이터 필터링)
+   - Time-Weighted Retriever (시간 가중치)
+
+2. 추가 리랭커
+   - Cohere Reranker
+   - Jina Reranker
+   - FlashRank
+
+3. 추가 도구
+   - 코드 실행 도구
+   - 데이터베이스 쿼리 도구
+   - 이메일/캘린더 도구
+
+4. 멀티모달
+   - 이미지 임베딩 (CLIP)
+   - 이미지 기반 RAG
+
+5. 평가
+   - RAGAS 평가 지표
+   - LangSmith 모니터링
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

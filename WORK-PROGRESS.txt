@@ -1,0 +1,211 @@
+================================================================================
+PM-MSA 작업 진행 현황
+================================================================================
+최종 업데이트: 2026-02-21
+
+================================================================================
+1. 프로젝트 개요
+================================================================================
+
+Personal AI Agent Service (PM-MSA)
+- MSA 기반 개인 AI 비서 서비스
+- Spring Cloud (Eureka, Gateway) + Python FastAPI + Next.js
+- 설계 문서: PM-AI-AGENT-ARCHITECTURE.txt (단일 통합 문서)
+
+================================================================================
+2. 구현 단계별 진행 현황
+================================================================================
+
+Phase 1: 기반 구축 ✅ 완료 (2026-02-21)
+--------------------------------------------------------------------------------
+
+  [✅] 1-1. Docker Compose 환경 구성
+       - docker-compose.yml 생성 (프로필: 기본=인프라, db=MySQL, app=앱서비스)
+       - infra/init-db.sql 생성 (dy_db, pm_workflow 데이터베이스)
+       - 실행 확인: Kafka, Redis, Zookeeper, Kafka UI 정상 기동
+
+  [✅] 1-2. Kafka Topics 생성
+       - pm.document.events (3 파티션)
+       - pm.workflow.events (3 파티션)
+       - kafka-topics --list 로 확인 완료
+
+  [⏭️] 1-3. pm-common 공통 모듈 → 제거 결정
+       - MSA에서 공통 모듈 추출은 불필요하다는 판단
+       - 각 서비스에서 ApiResponse, BaseEntity 등을 독립적으로 관리
+
+  [✅] 1-4. pm-workflow 서비스 생성
+       - Spring Boot 4.0.2, Java 25, Spring Cloud 2025.1.0
+       - 포트: 8084, DB: pm_workflow (MySQL)
+       - 엔티티 6개: Agent, Conversation, Message, Document, AgentDocument, WorkflowExecution
+       - API: AgentController, ConversationController, WorkflowController, HealthController
+       - Kafka Consumer: pm.document.events, pm.workflow.events 수신
+       - WebSocket STOMP: /ws 엔드포인트, /topic/** 브로커
+       - Spring Security: GatewayAuthenticationFilter (X-User-Id 헤더 기반)
+       - 빌드 및 기동 확인 완료 (DB 테이블 6개 자동 생성 확인)
+
+  [✅] 1-5. Gateway 라우팅 업데이트
+       - pm-infra/gateway/application.yml에 pm-workflow 라우트 6개 추가
+         (/api/agents/**, /api/conversations/**, /api/workflows/**,
+          /api/documents/**, /ws/**, /api/workflow-health/**)
+       - JwtAuthenticationFilter OPEN_ENDPOINTS에 /health, /actuator 추가
+       - 빌드 확인 완료
+
+Phase 2: 문서 처리 파이프라인 ✅ 완료 (2026-02-21)
+--------------------------------------------------------------------------------
+
+  [✅] 2-1. pm-workflow 내부 Document API 추가
+       - DocumentController: POST /api/documents/internal/register (내부),
+         GET /api/documents, GET /api/documents/{id}, DELETE /api/documents/{id}
+       - DocumentService: register, getDocumentsByUser, getDocument, deleteDocument
+       - DocumentRegisterRequest, DocumentResponse DTO
+       - SecurityConfig: /api/documents/internal/** permitAll
+       - compileJava 성공 확인
+
+  [✅] 2-2. Gateway 라우팅 분리
+       - POST /api/documents/upload → lb://PM-DOCUMENT (업로드 전용)
+       - GET/DELETE /api/documents/** → lb://PM-WORKFLOW (메타데이터 CRUD)
+       - Method predicate로 POST만 PM-DOCUMENT로 분리
+
+  [✅] 2-3. pm-document 서비스 (Python/FastAPI, 포트 8082)
+       - FastAPI + Eureka 등록 + Kafka Producer
+       - POST /api/documents/upload: 파일 수신 → 로컬 저장 → pm-workflow 등록
+       - 백그라운드 태스크: 파싱(PDF/DOCX/TXT) → 청킹(RecursiveCharacterTextSplitter)
+       - Kafka 이벤트: document.uploaded, document.chunked, document.failed
+       - 라이브러리: PyMuPDF, python-docx, langchain-text-splitters, httpx
+       - Dockerfile, .gitignore, .env.example
+
+  [✅] 2-4. pm-agent 서비스 (Python/FastAPI, 포트 8083)
+       - FastAPI + Eureka 등록 + Kafka Consumer/Producer
+       - Kafka Consumer (pm-agent-group): document.chunked 이벤트 수신
+       - OpenAI text-embedding-3-small 임베딩 생성 (배치 20개씩)
+       - Supabase pgvector document_chunks 테이블 저장
+       - Kafka 이벤트: document.embedding.started/completed, document.failed
+       - Graceful degradation: OpenAI/Supabase 미설정 시 경고 후 계속 동작
+       - Dockerfile, .gitignore, .env.example
+
+  [✅] 2-5. Docker Compose 업데이트
+       - pm-document: PM_WORKFLOW_URL, UPLOAD_DIR, document_uploads 볼륨
+       - pm-agent: OPENAI_API_KEY, SUPABASE_URL/KEY 환경변수
+
+  이벤트 흐름:
+    upload → pm-document → document.uploaded → document.chunked
+    → pm-agent → document.embedding.started → document.embedding.completed
+    → pm-workflow (Kafka Consumer) → DB 상태 업데이트 → WebSocket 전파
+
+Phase 3: AI Agent ⬜ 미착수
+--------------------------------------------------------------------------------
+
+  [ ] 3-1. pm-agent RAG 파이프라인
+       - Naive RAG, Adaptive RAG, Agentic RAG
+       - LangChain + Supabase pgvector 검색
+
+  [ ] 3-2. LangGraph 워크플로우 + 이벤트 발행
+       - 그래프 기반 워크플로우 실행
+       - Kafka 이벤트 발행 (pm.workflow.events)
+
+  [ ] 3-3. SSE 스트리밍
+       - LLM 응답 실시간 스트리밍
+
+Phase 4: 프론트엔드 ⬜ 미착수
+--------------------------------------------------------------------------------
+
+  [ ] 4-1. 문서 관리 UI
+  [ ] 4-2. 채팅 인터페이스
+  [ ] 4-3. 워크플로우 시각화 (실시간 WebSocket)
+
+================================================================================
+3. 현재 프로젝트 구조
+================================================================================
+
+pm-msa/
+├── PM-AI-AGENT-ARCHITECTURE.txt   ← 통합 설계 문서
+├── WORK-PROGRESS.txt              ← 이 파일 (작업 진행 현황)
+├── docker-compose.yml             ← Docker Compose (프로필 기반)
+├── infra/
+│   └── init-db.sql                ← DB 초기화 (dy_db, pm_workflow)
+├── pm-infra/                      ← 인프라 (멀티모듈 Gradle)
+│   ├── eureka-server/             ← Eureka Server (8761)
+│   └── gateway/                   ← Spring Cloud Gateway (8080)
+├── pm-auth/                       ← 인증 서비스 (8081, dy_db)
+├── pm-workflow/                   ← 워크플로우 서비스 (8084, pm_workflow)
+├── pm-document/                   ← 문서 처리 서비스 (8082, Python/FastAPI) ✅ NEW
+├── pm-agent/                      ← AI 에이전트 서비스 (8083, Python/FastAPI) ✅ NEW
+├── pm-web/                        ← Next.js 프론트엔드 (3000)
+└── README.md
+
+================================================================================
+4. 주요 기술 결정 사항
+================================================================================
+
+1. DB 전략
+   - WAS용 DB: 로컬 Docker MySQL (pm-auth → dy_db, pm-workflow → pm_workflow)
+   - AI/RAG용 DB: Supabase Cloud PostgreSQL + pgvector
+   - 배포 환경은 미정, 로컬 Docker로 개발
+
+2. pm-common 제거
+   - MSA에서 공통 모듈 추출 불필요
+   - 각 서비스가 ApiResponse, BaseEntity 등을 독립 관리
+
+3. WebSocket 프로토콜
+   - Spring WebSocket STOMP 사용 (Socket.io 대신)
+   - 프론트엔드: @stomp/stompjs
+
+4. 프론트엔드 라이브러리
+   - @xyflow/react (구 ReactFlow, v12+에서 리네임)
+   - @stomp/stompjs (Socket.io 대신)
+
+5. Kafka 듀얼 리스너
+   - INTERNAL (kafka:29092): Docker 내부 통신
+   - EXTERNAL (localhost:9092): 호스트 IDE에서 접속
+
+6. 문서 메타데이터 소유권
+   - documents 테이블은 pm-workflow(MySQL)가 소유
+   - pm-document는 업로드 시 pm-workflow 내부 API 호출로 레코드 생성
+   - Gateway에서 업로드(POST)는 pm-document, 조회/삭제(GET/DELETE)는 pm-workflow로 분리
+
+7. 파일 저장소
+   - 로컬 파일시스템 (./uploads/<userId>/<uuid>.ext) → 이후 Supabase Storage 전환 가능
+   - StorageService 추상화
+
+================================================================================
+5. 서비스 실행 방법
+================================================================================
+
+# 인프라 (Kafka, Redis, Zookeeper, Kafka UI)
+docker compose up -d
+
+# MySQL도 함께 (기존 standalone MySQL과 포트 충돌 주의)
+docker compose --profile db up -d
+
+# pm-auth (포트 8081)
+cd pm-auth && DB_PASSWORD=east4317 ./gradlew bootRun
+
+# pm-workflow (포트 8084)
+cd pm-workflow && DB_PASSWORD=east4317 ./gradlew bootRun
+
+# pm-document (포트 8082)
+cd pm-document && pip install -r requirements.txt && uvicorn app.main:app --port 8082 --reload
+
+# pm-agent (포트 8083)
+cd pm-agent && pip install -r requirements.txt && uvicorn app.main:app --port 8083 --reload
+
+# pm-web (포트 3000)
+cd pm-web && npm run dev
+
+# Gateway (포트 8080) - Eureka 필요
+cd pm-infra && ./gradlew :gateway:bootRun
+
+# Eureka Server (포트 8761)
+cd pm-infra && ./gradlew :eureka-server:bootRun
+
+================================================================================
+6. 다음 작업 시 참고
+================================================================================
+
+- Supabase Cloud 설정 필요 (pgvector, document_chunks 테이블, RPC 함수)
+- OPENAI_API_KEY 환경변수 설정 필요
+- OpenAI/Supabase 미설정 시 graceful degradation (경고 로그 후 계속 동작)
+- 기존 MySQL 컨테이너(이름: mysql)가 standalone으로 실행 중이므로
+  docker-compose의 MySQL은 --profile db로만 실행 (포트 충돌 방지)
+
+================================================================================
