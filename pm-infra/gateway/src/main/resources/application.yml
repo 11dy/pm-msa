@@ -21,6 +21,37 @@ spring:
               uri: lb://PM-AUTH
               predicates:
                 - Path=/login/oauth2/**
+            # pm-workflow
+            - id: pm-workflow-agents
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/agents/**
+            - id: pm-workflow-conversations
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/conversations/**
+            - id: pm-workflow-workflows
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/workflows/**
+            # pm-document (업로드는 pm-document로 라우팅)
+            - id: pm-document-upload
+              uri: lb://PM-DOCUMENT
+              predicates:
+                - Path=/api/documents/upload
+                - Method=POST
+            - id: pm-workflow-documents
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/documents/**
+            - id: pm-workflow-websocket
+              uri: lb:ws://PM-WORKFLOW
+              predicates:
+                - Path=/ws/**
+            - id: pm-workflow-health
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/workflow-health/**
 
 eureka:
   client:
