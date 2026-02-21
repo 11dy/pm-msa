@@ -1,0 +1,199 @@
+# PM-MSA Docker Compose
+#
+# 사용법:
+#   docker compose up -d                          → 인프라만 (Kafka, Redis)
+#   docker compose --profile db up -d             → + MySQL
+#   docker compose --profile app up -d            → + 애플리케이션 서비스
+#   docker compose --profile db --profile app up -d → 전체
+#
+# 기존 로컬 Docker MySQL(포트 3306)을 사용 중이면 db 프로파일 생략
+
+services:
+  # ============ 데이터베이스 ============
+  mysql:
+    image: mysql:8.0
+    container_name: pm-mysql
+    profiles: ["db"]
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ============ Kafka ============
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pm-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pm-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: pm-kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pm-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+  # ============ 애플리케이션 서비스 ============
+  eureka-server:
+    build: ./pm-infra/eureka-server
+    container_name: pm-eureka
+    profiles: ["app"]
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build: ./pm-infra/gateway
+    container_name: pm-gateway
+    profiles: ["app"]
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  pm-auth:
+    build: ./pm-auth
+    container_name: pm-auth
+    profiles: ["app"]
+    ports:
+      - "8081:8081"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dy_db
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  pm-document:
+    build: ./pm-document
+    container_name: pm-document
+    profiles: ["app"]
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      PM_WORKFLOW_URL: http://pm-workflow:8084
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - document_uploads:/app/uploads
+    depends_on:
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-agent:
+    build: ./pm-agent
+    container_name: pm-agent
+    profiles: ["app"]
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_SERVICE_KEY}
+    depends_on:
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-workflow:
+    build: ./pm-workflow
+    container_name: pm-workflow
+    profiles: ["app"]
+    ports:
+      - "8084:8084"
+    environment:
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pm_workflow
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-server:
+        condition: service_healthy
+
+  pm-web:
+    build: ./pm-web
+    container_name: pm-web
+    profiles: ["app"]
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - gateway
+
+volumes:
+  mysql_data:
+  redis_data:
+  document_uploads:
