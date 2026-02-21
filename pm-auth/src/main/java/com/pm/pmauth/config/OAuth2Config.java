@@ -1,5 +1,9 @@
 package com.pm.pmauth.config;
 
+// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
+// 추후 OAuth2 복원 시 아래 주석 해제
+
+/*
 import com.pm.pmauth.oauth2.OAuth2Properties;
 import io.netty.channel.ChannelOption;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -27,3 +31,4 @@ public class OAuth2Config {
                 .build();
     }
 }
+*/

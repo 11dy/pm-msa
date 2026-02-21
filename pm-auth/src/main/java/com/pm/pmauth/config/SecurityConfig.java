@@ -35,8 +35,9 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/auth/oauth2/{provider}",
-                                "/api/auth/oauth2/callback/{provider}",
+                                // OAuth2 소셜 로그인 비활성화
+                                // "/api/auth/oauth2/{provider}",
+                                // "/api/auth/oauth2/callback/{provider}",
                                 "/health",
                                 "/actuator/**",
                                 "/swagger-ui/**",
