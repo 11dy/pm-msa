@@ -24,10 +24,8 @@ export default function OAuth2CallbackPage() {
     const refreshToken = params.get('refresh_token');
 
     if (accessToken && refreshToken) {
-      // 토큰에서 사용자 정보 추출 (JWT 디코딩)
       try {
         const payload = JSON.parse(atob(accessToken.split('.')[1]));
-
         setSession(
           {
             id: Number(payload.sub),
@@ -40,9 +38,8 @@ export default function OAuth2CallbackPage() {
           accessToken,
           refreshToken
         );
-
         router.push('/dashboard');
-      } catch (e) {
+      } catch {
         setError('토큰 처리 중 오류가 발생했습니다');
       }
     } else {
@@ -52,14 +49,11 @@ export default function OAuth2CallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <Card className="w-full max-w-md text-center">
-          <h1 className="text-xl font-bold text-red-600 mb-4">로그인 실패</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="text-blue-600 hover:underline"
-          >
+          <h1 className="text-xl font-bold text-danger mb-4">로그인 실패</h1>
+          <p className="text-muted mb-6">{error}</p>
+          <button onClick={() => router.push('/login')} className="text-accent hover:underline cursor-pointer">
             로그인 페이지로 돌아가기
           </button>
         </Card>
@@ -68,10 +62,10 @@ export default function OAuth2CallbackPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-        <p className="text-gray-600">로그인 처리 중...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4" />
+        <p className="text-muted">로그인 처리 중...</p>
       </div>
     </div>
   );
