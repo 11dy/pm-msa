@@ -7,7 +7,7 @@ import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 
 export function ChatPanel() {
-  const { messages, isLoading, addMessage, setLoading } = useChatStore();
+  const { messages, isLoading, sendMessage } = useChatStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,24 +17,11 @@ export function ChatPanel() {
   }, [messages]);
 
   const handleSend = async (content: string) => {
-    addMessage('user', content);
-    setLoading(true);
-
-    // TODO: pm-agent chat API 연동
-    // 현재는 목업 응답
-    setTimeout(() => {
-      addMessage('assistant',
-        '안녕하세요! 업로드된 문서를 기반으로 답변드리겠습니다.\n\n' +
-        '현재 RAG 파이프라인이 연동되지 않은 상태입니다. ' +
-        'Phase 3 구현 완료 후 문서 기반 답변이 가능합니다.'
-      );
-      setLoading(false);
-    }, 1000);
+    await sendMessage(content);
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="p-4 border-b border-border">
         <h2 className="font-semibold flex items-center gap-2">
           <MessageSquare size={18} className="text-accent" />
@@ -42,7 +29,6 @@ export function ChatPanel() {
         </h2>
       </div>
 
-      {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted">
@@ -70,7 +56,6 @@ export function ChatPanel() {
         )}
       </div>
 
-      {/* Input */}
       <ChatInput onSend={handleSend} disabled={isLoading} />
     </div>
   );

@@ -1,11 +1,11 @@
-# dy-infra
+# pm-infra
 
 Spring Cloud 기반 MSA 인프라 프로젝트
 
 ## 프로젝트 구조
 
 ```
-dy-infra/
+pm-infra/
 ├── build.gradle              # 루트 빌드 설정 (공통 의존성)
 ├── settings.gradle           # 멀티모듈 설정
 ├── gradlew / gradlew.bat     # Gradle Wrapper
@@ -13,7 +13,7 @@ dy-infra/
 ├── eureka-server/            # 서비스 디스커버리 서버
 │   ├── build.gradle
 │   └── src/main/
-│       ├── java/com/dy/eurekaserver/
+│       ├── java/com/pm/eurekaserver/
 │       │   └── EurekaServerApplication.java
 │       └── resources/
 │           └── application.yml
@@ -21,7 +21,7 @@ dy-infra/
 └── gateway/                  # API Gateway
     ├── build.gradle
     └── src/main/
-        ├── java/com/dy/gateway/
+        ├── java/com/pm/gateway/
         │   ├── GatewayApplication.java
         │   ├── config/
         │   │   ├── JwtProperties.java    # JWT 설정
@@ -71,7 +71,7 @@ dy-infra/
 ```
 ┌─────────────────┐
 │  Client Request │
-│  (dy-web:3000)  │
+│  (pm-web:3000)  │
 └────────┬────────┘
          │
          ▼
@@ -91,9 +91,8 @@ dy-infra/
          ▲
          │ 서비스 등록
 ┌────────┴────────┐
-│ 마이크로서비스들  │
-│ dy-auth         │
-│ (추가 예정)      │
+│  pm-auth :8081  │
+│  pm-agent :8083 │
 └─────────────────┘
 ```
 
@@ -117,7 +116,7 @@ Gateway에서 JWT 토큰을 검증하고 사용자 정보를 헤더에 추가하
 
 ### CORS 설정
 
-- **허용 Origin**: `http://localhost:3000` (dy-web)
+- **허용 Origin**: `http://localhost:3000` (pm-web)
 - **허용 Methods**: GET, POST, PUT, DELETE, OPTIONS
 - **Credentials**: 허용
 
@@ -125,9 +124,9 @@ Gateway에서 JWT 토큰을 검증하고 사용자 정보를 헤더에 추가하
 
 | 경로 | 대상 서비스 |
 |------|-------------|
-| `/api/auth/**` | DY-AUTH |
-| `/oauth2/**` | DY-AUTH |
-| `/login/oauth2/**` | DY-AUTH |
+| `/api/auth/**` | PM-AUTH |
+| `/oauth2/**` | PM-AUTH |
+| `/login/oauth2/**` | PM-AUTH |
 
 ## 실행 방법
 

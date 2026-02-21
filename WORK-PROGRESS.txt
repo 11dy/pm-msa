@@ -1,7 +1,7 @@
 ================================================================================
 PM-MSA 작업 진행 현황
 ================================================================================
-최종 업데이트: 2026-02-21
+최종 업데이트: 2026-02-22
 
 ================================================================================
 1. 프로젝트 개요
@@ -92,26 +92,73 @@ Phase 2: 문서 처리 파이프라인 ✅ 완료 (2026-02-21)
     → pm-agent → document.embedding.started → document.embedding.completed
     → pm-workflow (Kafka Consumer) → DB 상태 업데이트 → WebSocket 전파
 
-Phase 3: AI Agent ⬜ 미착수
+Phase 3: AI Agent RAG 파이프라인 ✅ 완료 (2026-02-22)
 --------------------------------------------------------------------------------
 
-  [ ] 3-1. pm-agent RAG 파이프라인
-       - Naive RAG, Adaptive RAG, Agentic RAG
-       - LangChain + Supabase pgvector 검색
+  [✅] 3-1. 의존성 추가
+       - langchain>=0.3.0, langchain-openai>=0.2.0 (LLM 체인)
+       - langgraph>=0.2.0 (워크플로우 그래프)
+       - sse-starlette>=2.0.0 (SSE 스트리밍)
 
-  [ ] 3-2. LangGraph 워크플로우 + 이벤트 발행
-       - 그래프 기반 워크플로우 실행
-       - Kafka 이벤트 발행 (pm.workflow.events)
+  [✅] 3-2. Naive RAG 체인
+       - app/retrievers/supabase_retriever.py
+         · search_documents(): Supabase RPC match_document_chunks 호출 (pgvector 유사도 검색)
+         · retrieve_relevant_docs(): OpenAI 임베딩 생성 → 벡터 검색 → LangChain Document 반환
+       - app/prompts/rag_prompt.py
+         · RAG_PROMPT: 시스템 프롬프트 + 컨텍스트 + 질문
+         · GENERAL_PROMPT: 일반 LLM 대화
+         · ROUTER_PROMPT: rag/general 분류
+         · GRADER_PROMPT: 문서 관련성 평가 (yes/no)
+         · REWRITER_PROMPT: 검색 쿼리 재작성
+       - app/chains/rag_chain.py
+         · invoke_rag(): 동기 RAG (검색 → 컨텍스트 → LLM)
+         · invoke_general(): 동기 일반 응답
+         · stream_rag(): 비동기 RAG SSE 스트리밍
+         · stream_general(): 비동기 일반 SSE 스트리밍
+         · GPT-4o, temperature 0.7
 
-  [ ] 3-3. SSE 스트리밍
-       - LLM 응답 실시간 스트리밍
+  [✅] 3-3. Adaptive RAG (LangGraph)
+       - app/graphs/states/rag_state.py: RAGState TypedDict
+       - app/graphs/nodes/router_node.py: GPT-4o-mini로 rag/general 분류
+       - app/graphs/nodes/retriever_node.py: Supabase pgvector 문서 검색
+       - app/graphs/nodes/grader_node.py: GPT-4o-mini로 문서 관련성 평가, 관련 문서 필터링
+       - app/graphs/nodes/generator_node.py: RAG/일반 응답 생성 (GPT-4o)
+       - app/graphs/nodes/rewriter_node.py: 쿼리 재작성 + retry_count 증가
+       - app/graphs/adaptive_rag.py: LangGraph StateGraph 컴파일
+         · 워크플로우: router → (rag→retrieve→grader, general→generate)
+         · grader 후: 관련 문서 있음→generate_rag, 없음+재시도<2→rewrite→retrieve, 없음+재시도≥2→generate_general
+         · run_adaptive_rag(): 그래프 실행 + 결과 반환
 
-Phase 4: 프론트엔드 ⬜ 미착수
+  [✅] 3-4. Chat API + SSE 스트리밍
+       - app/services/chat_service.py
+         · chat_sync(): Adaptive RAG 동기 실행
+         · chat_stream(): 라우팅 후 SSE 스트리밍 (stream_rag / stream_general)
+         · _classify_route(): router_node로 rag/general 분류
+         · _publish_chat_event(): Kafka workflow-events 이벤트 발행
+       - app/api/chat.py
+         · POST /api/chat/message (ChatRequest: question, user_id, stream)
+         · stream=true → EventSourceResponse (SSE), stream=false → JSON
+         · SSE 이벤트: token (청크), done (완료), error (에러)
+       - app/main.py
+         · CORS 미들웨어 추가 (localhost:3000 허용)
+         · chat 라우터 등록
+
+  [✅] 3-5. 프론트엔드 ChatPanel SSE 연동
+       - pm-web/src/shared/config/env.ts
+         · AGENT_BASE_URL 추가 (http://localhost:8083)
+       - pm-web/src/features/chat/model/useChatStore.ts
+         · sendMessage(): fetch → ReadableStream → SSE 파싱 → 실시간 메시지 업데이트
+         · 에러 시 안내 메시지 표시
+       - pm-web/src/features/chat/ui/ChatPanel.tsx
+         · 목업 제거, sendMessage() 연동
+       - Next.js 빌드 성공 확인
+
+Phase 4: 프론트엔드 고도화 ⬜ 미착수
 --------------------------------------------------------------------------------
 
-  [ ] 4-1. 문서 관리 UI
-  [ ] 4-2. 채팅 인터페이스
-  [ ] 4-3. 워크플로우 시각화 (실시간 WebSocket)
+  [ ] 4-1. 문서 업로드 UI (pm-document 연동)
+  [ ] 4-2. 워크플로우 시각화 (WebSocket 실시간)
+  [ ] 4-3. 프로젝트별 문서/채팅 분리
 
 ================================================================================
 3. 현재 프로젝트 구조
@@ -120,6 +167,7 @@ Phase 4: 프론트엔드 ⬜ 미착수
 pm-msa/
 ├── PM-AI-AGENT-ARCHITECTURE.txt   ← 통합 설계 문서
 ├── WORK-PROGRESS.txt              ← 이 파일 (작업 진행 현황)
+├── RELEASE-GUIDE.txt              ← 릴리즈/배포 가이드
 ├── docker-compose.yml             ← Docker Compose (프로필 기반)
 ├── infra/
 │   └── init-db.sql                ← DB 초기화 (dy_db, pm_workflow)
@@ -128,9 +176,27 @@ pm-msa/
 │   └── gateway/                   ← Spring Cloud Gateway (8080)
 ├── pm-auth/                       ← 인증 서비스 (8081, dy_db)
 ├── pm-workflow/                   ← 워크플로우 서비스 (8084, pm_workflow)
-├── pm-document/                   ← 문서 처리 서비스 (8082, Python/FastAPI) ✅ NEW
-├── pm-agent/                      ← AI 에이전트 서비스 (8083, Python/FastAPI) ✅ NEW
+├── pm-document/                   ← 문서 처리 서비스 (8082, Python/FastAPI)
+├── pm-agent/                      ← AI 에이전트 서비스 (8083, Python/FastAPI)
+│   ├── app/
+│   │   ├── api/chat.py            ← Chat SSE API ✅ NEW
+│   │   ├── chains/rag_chain.py    ← Naive RAG 체인 ✅ NEW
+│   │   ├── graphs/
+│   │   │   ├── adaptive_rag.py    ← LangGraph Adaptive RAG ✅ NEW
+│   │   │   ├── states/rag_state.py
+│   │   │   └── nodes/             ← router, retriever, grader, generator, rewriter
+│   │   ├── prompts/rag_prompt.py  ← 프롬프트 템플릿 ✅ NEW
+│   │   ├── retrievers/supabase_retriever.py ← pgvector 검색 ✅ NEW
+│   │   └── services/chat_service.py ← 채팅 오케스트레이션 ✅ NEW
+│   └── requirements.txt
 ├── pm-web/                        ← Next.js 프론트엔드 (3000)
+│   └── src/
+│       ├── features/
+│       │   ├── chat/              ← AI 채팅 (SSE 스트리밍) ✅ UPDATED
+│       │   ├── project/           ← 프로젝트 관리
+│       │   └── auth/              ← 인증
+│       └── shared/
+│           └── config/env.ts      ← AGENT_BASE_URL 추가 ✅ UPDATED
 └── README.md
 
 ================================================================================
@@ -167,6 +233,12 @@ pm-msa/
    - 로컬 파일시스템 (./uploads/<userId>/<uuid>.ext) → 이후 Supabase Storage 전환 가능
    - StorageService 추상화
 
+8. RAG 전략
+   - Naive RAG: 단순 검색 → LLM (stream_rag, invoke_rag)
+   - Adaptive RAG: LangGraph 기반 (라우팅 → 검색 → 평가 → 생성/재작성)
+   - 라우터가 질문을 rag/general로 자동 분류
+   - Supabase 미설정 시 일반 LLM 응답으로 fallback
+
 ================================================================================
 5. 서비스 실행 방법
 ================================================================================
@@ -177,6 +249,12 @@ docker compose up -d
 # MySQL도 함께 (기존 standalone MySQL과 포트 충돌 주의)
 docker compose --profile db up -d
 
+# Eureka Server (포트 8761) — 먼저 실행
+cd pm-infra && ./gradlew :eureka-server:bootRun
+
+# Gateway (포트 8080)
+cd pm-infra && ./gradlew :gateway:bootRun
+
 # pm-auth (포트 8081)
 cd pm-auth && DB_PASSWORD=REDACTED ./gradlew bootRun
 
@@ -186,17 +264,11 @@ cd pm-workflow && DB_PASSWORD=REDACTED ./gradlew bootRun
 # pm-document (포트 8082)
 cd pm-document && pip install -r requirements.txt && uvicorn app.main:app --port 8082 --reload
 
-# pm-agent (포트 8083)
+# pm-agent (포트 8083) — OPENAI_API_KEY 필요
 cd pm-agent && pip install -r requirements.txt && uvicorn app.main:app --port 8083 --reload
 
 # pm-web (포트 3000)
 cd pm-web && npm run dev
-
-# Gateway (포트 8080) - Eureka 필요
-cd pm-infra && ./gradlew :gateway:bootRun
-
-# Eureka Server (포트 8761)
-cd pm-infra && ./gradlew :eureka-server:bootRun
 
 ================================================================================
 6. 다음 작업 시 참고
@@ -207,5 +279,7 @@ cd pm-infra && ./gradlew :eureka-server:bootRun
 - OpenAI/Supabase 미설정 시 graceful degradation (경고 로그 후 계속 동작)
 - 기존 MySQL 컨테이너(이름: mysql)가 standalone으로 실행 중이므로
   docker-compose의 MySQL은 --profile db로만 실행 (포트 충돌 방지)
+- pm-agent 실행 시 .env 파일에 OPENAI_API_KEY 설정 필수
+- 프론트엔드 채팅은 pm-agent(8083)에 직접 연결 (Gateway 미경유)
 
 ================================================================================

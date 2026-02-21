@@ -2,8 +2,9 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import health, chat
 from app.config import settings
 from app.kafka.consumer import start_consumer, stop_consumer
 from app.kafka.producer import close_producer
@@ -17,12 +18,12 @@ logger = logging.getLogger(__name__)
 _eureka_client = None
 
 
-def _register_eureka() -> None:
+async def _register_eureka() -> None:
     global _eureka_client
     try:
         import py_eureka_client.eureka_client as eureka_client
 
-        eureka_client.init(
+        await eureka_client.init_async(
             eureka_server=settings.eureka_server,
             app_name="PM-AGENT",
             instance_port=settings.app_port,
@@ -45,7 +46,7 @@ def _deregister_eureka() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _register_eureka()
+    await _register_eureka()
     start_consumer()
 
     if not settings.openai_api_key:
@@ -67,4 +68,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(health.router)
+app.include_router(chat.router)
