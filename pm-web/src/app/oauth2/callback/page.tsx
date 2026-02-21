@@ -1,5 +1,9 @@
 'use client';
 
+// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
+// 추후 OAuth2 복원 시 아래 주석 해제
+
+/*
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/entities/session';
@@ -69,4 +73,11 @@ export default function OAuth2CallbackPage() {
       </div>
     </div>
   );
+}
+*/
+
+import { redirect } from 'next/navigation';
+
+export default function OAuth2CallbackPage() {
+  redirect('/login');
 }

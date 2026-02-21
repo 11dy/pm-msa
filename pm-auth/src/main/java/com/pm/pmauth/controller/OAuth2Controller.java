@@ -1,5 +1,9 @@
 package com.pm.pmauth.controller;
 
+// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
+// 추후 OAuth2 복원 시 아래 주석 해제
+
+/*
 import com.pm.pmauth.dto.response.ApiResponse;
 import com.pm.pmauth.dto.response.LinkedProvidersResponse;
 import com.pm.pmauth.dto.response.OAuth2UrlResponse;
@@ -121,3 +125,4 @@ public class OAuth2Controller {
         return ResponseEntity.ok(ApiResponse.success("연동된 소셜 계정 목록 조회 완료", response));
     }
 }
+*/
