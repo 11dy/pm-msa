@@ -1,6 +1,6 @@
-# dy-web
+# pm-web
 
-DY-MSA 프로젝트의 프론트엔드 웹 애플리케이션입니다.
+PM-MSA 프로젝트의 프론트엔드 웹 애플리케이션입니다.
 
 ## 기술 스택
 
@@ -12,99 +12,83 @@ DY-MSA 프로젝트의 프론트엔드 웹 애플리케이션입니다.
 | State Management | Zustand |
 | Form/Validation | react-hook-form + zod |
 | HTTP Client | ky |
+| Icons | lucide-react |
 
 ## 프로젝트 구조 (FSD Architecture)
 
 ```
 src/
-├── app/                    # Next.js App Router
+├── app/                        # Next.js App Router
 │   ├── (auth)/
-│   │   ├── login/         # 로그인 페이지
-│   │   └── signup/        # 회원가입 페이지
+│   │   ├── login/page.tsx      # 로그인 페이지
+│   │   └── signup/page.tsx     # 회원가입 페이지
 │   ├── (main)/
-│   │   └── dashboard/     # 대시보드 페이지
+│   │   ├── layout.tsx          # 인증된 사용자 레이아웃 (사이드바)
+│   │   └── dashboard/page.tsx  # 대시보드 (프로젝트 + 채팅)
 │   ├── oauth2/
-│   │   └── callback/      # OAuth2 콜백 처리
-│   ├── layout.tsx
-│   ├── page.tsx           # 메인 페이지
-│   └── globals.css
+│   │   └── callback/page.tsx   # OAuth2 콜백 처리
+│   ├── layout.tsx              # 루트 레이아웃
+│   ├── page.tsx                # 랜딩 페이지
+│   └── globals.css             # 다크 테마 글로벌 스타일
 │
-├── features/              # 비즈니스 기능
-│   └── auth/
-│       ├── ui/
-│       │   ├── LoginForm.tsx
-│       │   ├── SignupForm.tsx
-│       │   └── SocialLoginButtons.tsx
-│       ├── model/
-│       │   ├── useAuthStore.ts
-│       │   └── authSchema.ts
-│       └── api/
-│           └── authApi.ts
+├── features/                   # 비즈니스 기능
+│   ├── auth/
+│   │   ├── ui/                 # LoginForm, SignupForm, SocialLoginButtons
+│   │   ├── model/              # useAuthStore, authSchema
+│   │   └── api/                # authApi
+│   ├── chat/
+│   │   ├── ui/                 # ChatPanel, ChatInput, ChatMessage
+│   │   └── model/              # useChatStore, types
+│   └── project/
+│       ├── ui/                 # ProjectList, ProjectCard, ProjectCalendar, CreateProjectModal
+│       └── model/              # useProjectStore, types
 │
-├── entities/              # 비즈니스 엔티티
-│   ├── user/
-│   │   └── model/types.ts
-│   └── session/
-│       └── model/useSessionStore.ts
+├── entities/                   # 비즈니스 엔티티
+│   ├── user/model/types.ts
+│   └── session/model/useSessionStore.ts
 │
-└── shared/                # 공유 모듈
-    ├── api/
-    │   ├── client.ts      # ky 인스턴스
-    │   └── types.ts       # API 타입
-    ├── ui/
-    │   ├── Button.tsx
-    │   ├── Input.tsx
-    │   └── Card.tsx
-    ├── lib/
-    │   └── cn.ts          # className 유틸
-    └── config/
-        └── env.ts         # 환경변수
+├── widgets/                    # 복합 UI 블록
+│   └── sidebar/Sidebar.tsx     # 좌측 사이드바 (프로젝트 생성, 사용자 메뉴)
+│
+└── shared/                     # 공유 모듈
+    ├── api/client.ts           # ky 인스턴스 (Bearer 토큰 자동 주입)
+    ├── ui/                     # Button, Input, Card, Modal
+    ├── lib/cn.ts               # className 유틸
+    └── config/env.ts           # 환경변수
 ```
 
 ## 페이지
 
 | 경로 | 설명 |
 |------|------|
-| `/` | 메인 페이지 (로그인/회원가입 선택) |
-| `/login` | 로그인 페이지 |
+| `/` | 랜딩 페이지 (히어로 + 기능 소개) |
+| `/login` | 로그인 페이지 (소셜 로그인 포함) |
 | `/signup` | 회원가입 페이지 |
-| `/dashboard` | 대시보드 (인증 필요) |
+| `/dashboard` | 대시보드 (프로젝트 목록 + AI 채팅) |
 | `/oauth2/callback` | OAuth2 콜백 처리 |
 
-## 인증 흐름
+## 주요 기능
 
-### 일반 로그인
+### 대시보드
+- **프로젝트 관리**: 카드 뷰 / 캘린더 뷰 전환, 프로젝트 생성/요약
+- **AI 채팅**: pm-agent와 연동된 ChatGPT 스타일 채팅 패널 (SSE 스트리밍)
 
-```
-1. /login 페이지에서 이메일/비밀번호 입력
-2. POST /api/auth/login 호출
-3. 토큰 저장 (localStorage + Zustand)
-4. /dashboard로 이동
-```
-
-### OAuth2 소셜 로그인
-
-```
-1. /login 페이지에서 "Google로 계속하기" 클릭
-2. GET /api/auth/oauth2/google → 인증 URL 응답
-3. Google 로그인 페이지로 리다이렉트
-4. 로그인 완료 → /oauth2/callback#access_token=...&refresh_token=...
-5. 콜백 페이지에서 토큰 파싱 및 저장
-6. /dashboard로 이동
-```
+### 인증
+- 이메일/비밀번호 로그인
+- OAuth2 소셜 로그인 (Google, Kakao, Naver)
+- JWT 토큰 기반 세션 관리
 
 ## 실행 방법
 
 ### 사전 요구사항
-
 - Node.js 18+
 - Gateway 실행 중 (localhost:8080)
-- dy-auth 실행 중
+- pm-auth 실행 중
 
 ### 설치 및 실행
 
 ```bash
-cd dy-web
+cd pm-web
 
 # 의존성 설치
 npm install
@@ -132,15 +116,16 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 
 ## API 연동
 
-Gateway를 통해 dy-auth API와 통신합니다.
+Gateway를 통해 백엔드 서비스와 통신합니다.
 
-| 기능 | 엔드포인트 |
-|------|-----------|
-| 회원가입 | POST /api/auth/signup |
-| 로그인 | POST /api/auth/login |
-| 토큰 갱신 | POST /api/auth/refresh |
-| 로그아웃 | POST /api/auth/logout |
-| OAuth2 URL | GET /api/auth/oauth2/{provider} |
+| 기능 | 엔드포인트 | 대상 서비스 |
+|------|-----------|-------------|
+| 회원가입 | POST /api/auth/signup | pm-auth |
+| 로그인 | POST /api/auth/login | pm-auth |
+| 토큰 갱신 | POST /api/auth/refresh | pm-auth |
+| 로그아웃 | POST /api/auth/logout | pm-auth |
+| OAuth2 URL | GET /api/auth/oauth2/{provider} | pm-auth |
+| AI 채팅 | POST /api/chat | pm-agent |
 
 ## 소셜 로그인 지원
 
