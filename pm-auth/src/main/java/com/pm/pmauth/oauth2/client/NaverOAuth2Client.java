@@ -1,5 +1,9 @@
 package com.pm.pmauth.oauth2.client;
 
+// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
+// 추후 OAuth2 복원 시 아래 주석 해제
+
+/*
 import com.pm.pmauth.oauth2.OAuth2Properties;
 import com.pm.pmauth.oauth2.OAuth2Provider;
 import com.pm.pmauth.oauth2.userinfo.NaverUserInfo;
@@ -82,3 +86,4 @@ public class NaverOAuth2Client implements OAuth2Client {
         return new NaverUserInfo(response);
     }
 }
+*/
