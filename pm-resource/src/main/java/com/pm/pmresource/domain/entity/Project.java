@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "projects", indexes = {
-        @Index(name = "idx_projects_user_id", columnList = "user_id")
+@Table(name = "project", indexes = {
+        @Index(name = "idx_project_user_id", columnList = "user_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
