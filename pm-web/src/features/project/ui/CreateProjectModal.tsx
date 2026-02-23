@@ -14,11 +14,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [description, setDescription] = useState('');
   const { addProject } = useProjectStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    addProject(name.trim(), description.trim() || undefined);
+    await addProject(name.trim(), description.trim() || undefined);
     setName('');
     setDescription('');
     onClose();

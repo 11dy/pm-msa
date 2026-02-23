@@ -5,4 +5,7 @@ export type {
   SignUpRequest,
   LoginRequest,
   RefreshTokenRequest,
+  ProjectCreateRequest,
+  ProjectUpdateRequest,
+  ProjectResponse,
 } from './types';
