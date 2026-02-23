@@ -29,3 +29,21 @@ export interface LoginRequest {
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
+
+export interface ProjectCreateRequest {
+  name: string;
+  description?: string;
+}
+
+export interface ProjectUpdateRequest {
+  name?: string;
+  description?: string;
+}
+
+export interface ProjectResponse {
+  id: number;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}

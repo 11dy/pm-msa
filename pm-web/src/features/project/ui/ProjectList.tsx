@@ -1,14 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { FolderOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FolderOpen, Loader2 } from 'lucide-react';
 import { useProjectStore } from '../model';
 import { ProjectCard } from './ProjectCard';
 import { ProjectCalendar } from './ProjectCalendar';
 import type { Project } from '../model';
 
 export function ProjectList() {
-  const { projects, selectedProject, selectProject } = useProjectStore();
+  const { projects, selectedProject, selectProject, fetchProjects, loading } = useProjectStore();
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
   const [summaryTarget, setSummaryTarget] = useState<Project | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
@@ -33,7 +37,11 @@ export function ProjectList() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        {projects.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 size={24} className="animate-spin text-muted" />
+          </div>
+        ) : projects.length > 0 ? (
           <div className="grid gap-3">
             {projects.map((project) => (
               <ProjectCard

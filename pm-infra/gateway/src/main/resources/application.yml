@@ -52,6 +52,11 @@ spring:
               uri: lb://PM-WORKFLOW
               predicates:
                 - Path=/api/workflow-health/**
+            # pm-resource
+            - id: pm-resource-projects
+              uri: lb://PM-RESOURCE
+              predicates:
+                - Path=/api/projects/**
 
 eureka:
   client:
