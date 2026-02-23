@@ -182,6 +182,24 @@ services:
       eureka-server:
         condition: service_healthy
 
+  pm-resource:
+    build: ./pm-resource
+    container_name: pm-resource
+    profiles: ["app"]
+    ports:
+      - "8085:8085"
+    environment:
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dy_db
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
   pm-web:
     build: ./pm-web
     container_name: pm-web

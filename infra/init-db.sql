@@ -1,2 +1,13 @@
 CREATE DATABASE IF NOT EXISTS dy_db;
 CREATE DATABASE IF NOT EXISTS pm_workflow;
+USE dy_db;
+
+CREATE TABLE IF NOT EXISTS project (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id     BIGINT       NOT NULL,
+  name        VARCHAR(200) NOT NULL,
+  description TEXT,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_project_user_id (user_id)
+);
