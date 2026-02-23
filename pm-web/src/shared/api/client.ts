@@ -17,5 +17,14 @@ export const apiClient = ky.create({
         }
       },
     ],
+    afterResponse: [
+      (_request, _options, response) => {
+        if (response.status === 401 && typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+        }
+      },
+    ],
   },
 });
