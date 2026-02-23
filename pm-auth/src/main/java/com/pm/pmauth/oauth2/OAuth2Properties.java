@@ -1,5 +1,9 @@
 package com.pm.pmauth.oauth2;
 
+// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
+// 추후 OAuth2 복원 시 아래 주석 해제
+
+/*
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -35,3 +39,4 @@ public class OAuth2Properties {
         return providers.get(provider.getRegistrationId());
     }
 }
+*/
