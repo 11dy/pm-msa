@@ -4,12 +4,12 @@ CREATE DATABASE IF NOT EXISTS pm_resource;
 
 USE pm_resource;
 
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE IF NOT EXISTS project (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,
   user_id     BIGINT       NOT NULL,
   name        VARCHAR(200) NOT NULL,
   description TEXT,
   created_at  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updated_at  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  INDEX idx_projects_user_id (user_id)
+  INDEX idx_project_user_id (user_id)
 );

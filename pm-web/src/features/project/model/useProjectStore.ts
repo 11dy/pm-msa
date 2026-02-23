@@ -32,7 +32,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   fetchProjects: async () => {
     set({ loading: true });
     try {
-      const res = await apiClient.get('api/projects').json<ApiResponse<ProjectResponse[]>>();
+      const res = await apiClient.get('api/project').json<ApiResponse<ProjectResponse[]>>();
       if (res.data) {
         set({ projects: res.data.map(toProject) });
       }
@@ -45,7 +45,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   addProject: async (name, description) => {
     try {
-      const res = await apiClient.post('api/projects', {
+      const res = await apiClient.post('api/project', {
         json: { name, description },
       }).json<ApiResponse<ProjectResponse>>();
       if (res.data) {
@@ -58,7 +58,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   updateProject: async (id, name, description) => {
     try {
-      const res = await apiClient.put(`api/projects/${id}`, {
+      const res = await apiClient.put(`api/project/${id}`, {
         json: { name, description },
       }).json<ApiResponse<ProjectResponse>>();
       if (res.data) {
