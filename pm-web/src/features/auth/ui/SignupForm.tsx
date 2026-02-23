@@ -8,7 +8,7 @@ import { Button, Input, Card } from '@/shared/ui';
 import { useSessionStore } from '@/entities/session';
 import { signupSchema, SignupFormData, useAuthStore } from '../model';
 import { authApi } from '../api';
-// import { SocialLoginButtons } from './SocialLoginButtons';
+import { SocialLoginButtons } from './SocialLoginButtons';
 
 export function SignupForm() {
   const router = useRouter();
@@ -99,7 +99,6 @@ export function SignupForm() {
         </Button>
       </form>
 
-      {/* OAuth2 소셜 로그인 비활성화
       <div className="my-6 flex items-center">
         <div className="flex-1 border-t border-border" />
         <span className="px-4 text-sm text-muted">또는</span>
@@ -107,7 +106,6 @@ export function SignupForm() {
       </div>
 
       <SocialLoginButtons />
-      */}
 
       <p className="mt-6 text-center text-sm text-muted">
         이미 계정이 있으신가요?{' '}

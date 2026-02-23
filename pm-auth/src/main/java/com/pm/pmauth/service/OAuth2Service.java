@@ -1,9 +1,5 @@
 package com.pm.pmauth.service;
 
-// OAuth2 소셜 로그인 비활성화 - 이메일 로그인만 사용
-// 추후 OAuth2 복원 시 아래 주석 해제
-
-/*
 import com.pm.pmauth.domain.entity.RefreshToken;
 import com.pm.pmauth.domain.entity.User;
 import com.pm.pmauth.domain.entity.UserAuth;
@@ -131,6 +127,7 @@ public class OAuth2Service {
 
         String email = userInfo.getEmail();
         if (email == null || email.isBlank()) {
+            // 이메일이 없는 경우 (카카오 등) provider_id 기반 임시 이메일 생성
             email = provider.name().toLowerCase() + "_" + userInfo.getProviderId() + "@oauth.local";
             log.info("Email not provided, generated temporary email: {}", email);
         }
@@ -180,4 +177,3 @@ public class OAuth2Service {
         return TokenResponse.of(accessToken, refreshToken, refreshTokenExpirationMillis / 1000);
     }
 }
-*/

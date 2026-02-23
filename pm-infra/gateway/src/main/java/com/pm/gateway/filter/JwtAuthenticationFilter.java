@@ -37,9 +37,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final List<String> OPEN_ENDPOINTS = List.of(
             "/api/auth",
-            // OAuth2 소셜 로그인 비활성화
-            // "/oauth2",
-            // "/login/oauth2",
+            "/oauth2",
+            "/login/oauth2",
             "/health",
             "/actuator"
     );
