@@ -10,14 +10,23 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const { isAuthenticated } = useSessionStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (useSessionStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    const unsub = useSessionStore.persist.onFinishHydration(() => setHydrated(true));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
