@@ -13,6 +13,7 @@
 # Claude / AI
 *.claude
 .ai/
+CLAUDE.md
 
 # Project docs (local only)
 PM-AI-AGENT-ARCHITECTURE.txt
