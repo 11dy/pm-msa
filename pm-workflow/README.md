@@ -28,11 +28,13 @@ pm-workflow/
     ├── controller/
     │   ├── AgentController.java               # 에이전트 CRUD
     │   ├── ConversationController.java        # 대화 세션 CRUD
+    │   ├── DocumentController.java            # 문서 CRUD + 프로젝트별 조회
     │   ├── WorkflowController.java            # 워크플로우 실행 조회
     │   └── HealthController.java              # 헬스체크
     ├── service/
     │   ├── AgentService.java                  # 에이전트 비즈니스 로직
-    │   └── ConversationService.java           # 대화 비즈니스 로직
+    │   ├── ConversationService.java           # 대화 비즈니스 로직
+    │   └── DocumentService.java               # 문서 비즈니스 로직
     ├── domain/
     │   ├── entity/
     │   │   ├── BaseEntity.java                # 공통 (createdAt, updatedAt)
@@ -58,12 +60,14 @@ pm-workflow/
     │   ├── request/
     │   │   ├── AgentCreateRequest.java
     │   │   ├── AgentUpdateRequest.java
-    │   │   └── ConversationCreateRequest.java
+    │   │   ├── ConversationCreateRequest.java
+    │   │   └── DocumentRegisterRequest.java
     │   └── response/
     │       ├── ApiResponse.java
     │       ├── AgentResponse.java
     │       ├── ConversationResponse.java
     │       ├── ConversationDetailResponse.java
+    │       ├── DocumentResponse.java
     │       └── MessageResponse.java
     ├── kafka/
     │   └── WorkflowEventConsumer.java         # Kafka 이벤트 처리 + WebSocket 전파
@@ -95,7 +99,16 @@ ACTIVE → ARCHIVED (보관)
 ```
 
 ### Document (문서)
-업로드된 문서의 임베딩 처리 상태를 추적합니다.
+업로드된 문서의 임베딩 처리 상태를 추적합니다. `projectId`를 통해 프로젝트별 문서 관리를 지원합니다.
+
+| 필드 | 설명 | 비고 |
+|------|------|------|
+| projectId | 소속 프로젝트 | nullable |
+| originalFilename | 원본 파일명 | - |
+| fileType | 파일 타입 (pdf, docx, ...) | - |
+| fileSize | 파일 크기 (bytes) | - |
+| status | 처리 상태 | UPLOADED → PROCESSING → COMPLETED/FAILED |
+| chunkCount | 청크 수 | 임베딩 완료 후 갱신 |
 
 ```
 UPLOADED → PROCESSING → COMPLETED
@@ -137,6 +150,16 @@ PENDING → RUNNING → COMPLETED
 | Method | URL | Description | Auth |
 |--------|-----|-------------|------|
 | GET | `/api/workflows/executions/{id}` | 워크플로우 실행 조회 | O |
+
+### 문서 API
+
+| Method | URL | Description | Auth |
+|--------|-----|-------------|------|
+| POST | `/api/documents/internal/register` | 문서 메타데이터 등록 (내부 전용) | X |
+| GET | `/api/documents` | 문서 목록 (전체) | O |
+| GET | `/api/documents?projectId=N` | 프로젝트별 문서 목록 | O |
+| GET | `/api/documents/{id}` | 문서 상세 | O |
+| DELETE | `/api/documents/{id}` | 문서 삭제 | O |
 
 ### 기타
 

@@ -47,3 +47,19 @@ export interface ProjectResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface DocumentResponse {
+  id: number;
+  userId: number;
+  projectId: number | null;
+  filename: string;
+  originalFilename: string;
+  fileType: string;
+  fileSize: number;
+  storagePath: string;
+  status: string;
+  chunkCount: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

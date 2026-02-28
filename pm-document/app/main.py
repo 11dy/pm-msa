@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 _eureka_client = None
 
 
-def _register_eureka() -> None:
+async def _register_eureka() -> None:
     global _eureka_client
     try:
         import py_eureka_client.eureka_client as eureka_client
 
-        eureka_client.init(
+        await eureka_client.init_async(
             eureka_server=settings.eureka_server,
             app_name="PM-DOCUMENT",
             instance_port=settings.app_port,
@@ -44,7 +44,7 @@ def _deregister_eureka() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _register_eureka()
+    await _register_eureka()
     logger.info("pm-document started on port %d", settings.app_port)
     yield
     close_producer()

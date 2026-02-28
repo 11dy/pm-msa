@@ -116,13 +116,19 @@ SUPABASE_KEY=eyJ...
 ### 실행
 
 ```bash
-# 실행 스크립트 사용
+cd pm-agent
+
+# 방법 1: run.sh 사용 (venv 자동 생성, 중복 실행 방지)
 ./run.sh
 
-# 또는 직접 실행
+# 방법 2: 수동 실행
+python3 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8083 --reload
 ```
+
+> `run.sh`는 `.gitignore`에 포함되어 있습니다. 최초 클론 시 직접 생성하거나 수동 실행하세요.
 
 ### 접속
 - **서비스**: http://localhost:8083
