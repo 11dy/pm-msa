@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
-    List<Document> findByUserIdOrderByCreatedAtDesc(Long userId);
-    List<Document> findByProjectIdOrderByCreatedAtDesc(Long projectId);
+    List<Document> findByUserIdAndActStOrderByCreatedAtDesc(Long userId, String actSt);
+    List<Document> findByProjectIdAndActStOrderByCreatedAtDesc(Long projectId, String actSt);
 }

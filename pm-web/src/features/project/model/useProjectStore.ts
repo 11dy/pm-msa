@@ -20,7 +20,7 @@ function toProject(res: ProjectResponse): Project {
     description: res.description,
     createdAt: res.createdAt,
     updatedAt: res.updatedAt,
-    documentCount: 0,
+    documentCount: res.documentCount ?? 0,
   };
 }
 

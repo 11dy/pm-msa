@@ -48,6 +48,10 @@ public class Document extends BaseEntity {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "act_st", nullable = false, length = 20)
+    @Builder.Default
+    private String actSt = "ACTIVATE";
+
     @Column(columnDefinition = "JSON")
     private String metadata;
 
@@ -62,5 +66,9 @@ public class Document extends BaseEntity {
     public void fail(String errorMessage) {
         this.status = DocumentStatus.FAILED;
         this.errorMessage = errorMessage;
+    }
+
+    public void delete() {
+        this.actSt = "DELETE";
     }
 }

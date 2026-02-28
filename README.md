@@ -101,6 +101,55 @@ pm-msa/
  :9092     (Vector DB)
 ```
 
+## 데이터베이스 구조
+
+MySQL에 2개의 DB를 분리 운영합니다.
+
+### dy_db — 핵심 도메인 (사용자, 리소스)
+
+pm-auth, pm-resource가 공유하는 DB. 변경이 적고 여러 서비스가 참조하는 핵심 데이터.
+
+| 테이블 | 모듈 | 용도 | 주요 컬럼 |
+|--------|------|------|-----------|
+| `users` | pm-auth | 사용자 계정 | id, email, user_nm, role, act_st |
+| `user_auth` | pm-auth | 인증 정보 | user_id, provider(LOCAL/GOOGLE/KAKAO), password |
+| `refresh_tokens` | pm-auth | JWT 리프레시 토큰 | user_id, token, expires_at |
+| `project` | pm-resource | 프로젝트 | user_id, name, description |
+
+### pm_workflow — AI 워크플로우 도메인
+
+pm-workflow 전용 DB. 대화, 메시지, 문서 등 빠르게 증가하는 AI 워크플로우 데이터.
+
+| 테이블 | 용도 | 주요 컬럼 |
+|--------|------|-----------|
+| `agents` | AI 에이전트 설정 | user_id, name, system_prompt, model, temperature |
+| `conversations` | 대화 세션 | user_id, agent_id, title, status |
+| `messages` | 채팅 메시지 | conversation_id, role(USER/ASSISTANT), content |
+| `documents` | 업로드 문서 메타데이터 | user_id, project_id, filename, status, chunk_count |
+| `agent_documents` | 에이전트-문서 연결 | agent_id, document_id |
+| `workflow_executions` | LangGraph 실행 추적 | conversation_id, workflow_type, graph_state |
+
+### DB 분리 이유
+
+```
+dy_db (핵심 도메인)              pm_workflow (AI 도메인)
+┌─────────────────┐            ┌──────────────────────┐
+│ users            │◄───────────│ agents               │
+│ user_auth        │    user_id │ conversations        │
+│ refresh_tokens   │            │ messages             │
+│ project          │◄───────────│ documents            │
+└─────────────────┘  project_id│ agent_documents      │
+                               │ workflow_executions   │
+                               └──────────────────────┘
+```
+
+- **데이터 증가 패턴이 다름**: dy_db는 사용자/프로젝트 등 느리게 증가, pm_workflow는 대화/메시지 등 빠르게 증가
+- **독립적 스케일링**: 워크플로우 데이터가 폭증해도 인증/리소스 DB에 영향 없음
+- **장애 격리**: 한쪽 DB에 부하가 걸려도 다른 쪽 서비스는 정상 운영
+- **MSA Database-per-Service 패턴**: 도메인 경계에 따라 DB를 분리하는 마이크로서비스 원칙 적용
+
+> 크로스 DB이므로 테이블 간 FK는 DB 제약조건이 아닌 애플리케이션 레벨에서 user_id, project_id로 참조합니다.
+
 ## 포트 정보
 
 | 서비스 | 포트 | 설명 |
