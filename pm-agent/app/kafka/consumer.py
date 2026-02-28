@@ -7,7 +7,8 @@ from confluent_kafka import Consumer, KafkaError
 from app.config import settings
 from app.kafka.producer import publish_event
 from app.services.embedding_service import generate_embeddings
-from app.vectorstore.supabase_store import store_embeddings
+from app.services.pii.masker import PIIMasker
+from app.vectorstore.factory import store_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,15 @@ def _process_chunked_event(event: dict) -> None:
     })
 
     try:
+        # PII 마스킹 (활성화 시)
+        if settings.pii_masking_enabled:
+            masker = PIIMasker()
+            for chunk in chunks:
+                masked_text, mapping = masker.mask(chunk["content"])
+                chunk["content"] = masked_text
+                chunk["pii_mapping"] = mapping.to_dict() if mapping.pii_detected else None
+            logger.info("PII masking applied to %d chunks for document %d", total_chunks, document_id)
+
         texts = [c["content"] for c in chunks]
         embeddings = generate_embeddings(texts)
 

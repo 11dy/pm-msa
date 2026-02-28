@@ -15,6 +15,28 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
 
+    # Ollama (Local LLM)
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model_pii: str = "llama3.2:3b"
+    ollama_model_light: str = "llama3.2:3b"
+    ollama_embedding_model: str = "bge-m3"
+    ollama_enabled: bool = True
+
+    # PII Masking
+    pii_masking_enabled: bool = True
+    pii_regex_fallback: bool = True
+
+    # Privacy Mode: "performance" (OpenAI 우선) | "security" (Ollama 우선)
+    privacy_mode: str = "performance"
+
+    # Local pgvector
+    local_pgvector_host: str = "localhost"
+    local_pgvector_port: int = 5433
+    local_pgvector_db: str = "vectordb"
+    local_pgvector_user: str = "postgres"
+    local_pgvector_password: str = "postgres"
+    use_local_vectorstore: bool = False
+
     class Config:
         env_file = ".env"
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { env } from '@/shared/config/env';
-import type { ChatMessage } from './types';
+import type { ChatMessage, MaskingInfo } from './types';
 
 interface ChatState {
   messages: ChatMessage[];
@@ -38,7 +38,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch(`${env.AGENT_BASE_URL}/api/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: content, user_id: 0, stream: true }),
+        body: JSON.stringify({
+          question: content,
+          user_id: 0,
+          stream: true,
+        }),
       });
 
       if (!res.ok) {
@@ -60,12 +64,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
         buffer = lines.pop() || '';
 
         for (const line of lines) {
+          if (line.startsWith('event:')) {
+            const eventType = line.slice(6).trim();
+
+            // 다음 data: 라인 처리는 아래에서 eventType 기반으로
+            continue;
+          }
+
           if (line.startsWith('data:')) {
             const jsonStr = line.slice(5).trim();
             if (!jsonStr) continue;
 
             try {
               const parsed = JSON.parse(jsonStr);
+
+              // privacy 이벤트: PII 감지 정보
+              if (parsed.pii_detected !== undefined) {
+                const maskingInfo: MaskingInfo = {
+                  piiDetected: parsed.pii_detected,
+                  maskedCount: parsed.masked_count || 0,
+                  categories: parsed.categories || [],
+                };
+                set((state) => ({
+                  messages: state.messages.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, maskingInfo }
+                      : m
+                  ),
+                }));
+                continue;
+              }
+
+              // token 이벤트: 스트리밍 콘텐츠
               if (parsed.content) {
                 set((state) => ({
                   messages: state.messages.map((m) =>

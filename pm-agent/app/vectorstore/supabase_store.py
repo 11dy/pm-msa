@@ -28,6 +28,7 @@ def store_embeddings(
             "chunk_index": chunk["index"],
             "content": chunk["content"],
             "embedding": embedding,
+            "pii_mapping": chunk.get("pii_mapping"),
         }
         client.table("document_chunks").insert(row).execute()
         stored += 1

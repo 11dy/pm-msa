@@ -11,7 +11,7 @@ from app.services import chunker_service, parser_service, storage_service
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv", ".xlsx", ".xls", ".hwp"}
 DOCUMENT_EVENTS_TOPIC = "pm.document.events"
 
 

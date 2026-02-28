@@ -14,8 +14,16 @@ def retrieve_documents(state: RAGState) -> RAGState:
     docs = retrieve_relevant_docs(question, user_id)
     logger.info("Retrieved %d documents for: '%s'", len(docs), question[:50])
 
+    # 검색된 문서들의 PII 매핑 수집
+    doc_pii_mappings = []
+    for doc in docs:
+        pii_mapping = doc.metadata.get("pii_mapping")
+        if pii_mapping:
+            doc_pii_mappings.append(pii_mapping)
+
     return {
         **state,
         "documents": docs,
+        "document_pii_mappings": doc_pii_mappings,
         "nodes_executed": state["nodes_executed"] + ["retriever"],
     }
