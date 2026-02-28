@@ -16,6 +16,7 @@ class ChatRequest(BaseModel):
     question: str
     user_id: int = 0
     stream: bool = True
+    privacy_mode: str | None = None  # "performance" | "security"
 
 
 class ChatResponse(BaseModel):
@@ -24,6 +25,8 @@ class ChatResponse(BaseModel):
     execution_id: str
     nodes_executed: list[str]
     documents_used: int
+    pii_detected: bool = False
+    privacy_mode: str = "performance"
 
 
 @router.post("/message")
@@ -34,25 +37,37 @@ async def chat_message(req: ChatRequest):
 
     if req.stream:
         return EventSourceResponse(
-            _stream_generator(req.question, req.user_id),
+            _stream_generator(req.question, req.user_id, req.privacy_mode),
             media_type="text/event-stream",
         )
 
-    result = chat_sync(req.question, req.user_id)
+    result = chat_sync(req.question, req.user_id, privacy_mode=req.privacy_mode)
     return ChatResponse(
         answer=result["answer"],
         route=result["route"],
         execution_id=result["execution_id"],
         nodes_executed=result["nodes_executed"],
         documents_used=result["documents_used"],
+        pii_detected=result.get("pii_detected", False),
+        privacy_mode=result.get("privacy_mode", "performance"),
     )
 
 
-async def _stream_generator(question: str, user_id: int):
-    """SSE 이벤트 생성기."""
+async def _stream_generator(
+    question: str,
+    user_id: int,
+    privacy_mode: str | None = None,
+):
+    """SSE 이벤트 생성기. privacy 이벤트 타입 포함."""
     try:
-        async for chunk in chat_stream(question, user_id):
-            yield {"event": "token", "data": json.dumps({"content": chunk})}
+        async for event in chat_stream(question, user_id, privacy_mode=privacy_mode):
+            event_type = event["type"]
+
+            if event_type == "privacy":
+                yield {"event": "privacy", "data": json.dumps(event["data"])}
+            elif event_type == "token":
+                yield {"event": "token", "data": json.dumps({"content": event["data"]})}
+
         yield {"event": "done", "data": json.dumps({"status": "completed"})}
     except Exception as e:
         logger.error("Stream error: %s", e)

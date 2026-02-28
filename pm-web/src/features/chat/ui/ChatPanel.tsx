@@ -22,7 +22,7 @@ export function ChatPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <h2 className="font-semibold flex items-center gap-2">
           <MessageSquare size={18} className="text-accent" />
           AI 채팅

@@ -2,6 +2,7 @@
 
 import { Bot, User } from 'lucide-react';
 import type { ChatMessage as ChatMessageType } from '../model';
+import { PrivacyBadge } from './PrivacyBadge';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -26,6 +27,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         }
       `}>
         <p className="whitespace-pre-wrap">{message.content}</p>
+        {!isUser && message.maskingInfo && (
+          <PrivacyBadge maskingInfo={message.maskingInfo} />
+        )}
       </div>
     </div>
   );

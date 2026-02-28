@@ -5,6 +5,7 @@
 #   docker compose --profile db up -d             → + MySQL
 #   docker compose --profile app up -d            → + 애플리케이션 서비스
 #   docker compose --profile db --profile app up -d → 전체
+#   docker compose --profile local-ai up -d       → + Ollama + pgvector (로컬 AI)
 #
 # 기존 로컬 Docker MySQL(포트 3306)을 사용 중이면 db 프로파일 생략
 
@@ -211,7 +212,42 @@ services:
     depends_on:
       - gateway
 
+  # ============ 로컬 AI (Ollama + pgvector) ============
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pm-ollama
+    profiles: ["local-ai"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: pm-pgvector
+    profiles: ["local-ai"]
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: vectordb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./infra/init-pgvector.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mysql_data:
   redis_data:
   document_uploads:
+  ollama_data:
+  pgvector_data:

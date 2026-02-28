@@ -1,8 +1,6 @@
 import logging
 
-from langchain_openai import ChatOpenAI
-
-from app.config import settings
+from app.llm import get_llm, TaskType
 from app.prompts.rag_prompt import RAG_PROMPT, GENERAL_PROMPT
 from app.graphs.states.rag_state import RAGState
 
@@ -24,8 +22,9 @@ def generate_rag_response(state: RAGState) -> RAGState:
     question = state["question"]
     docs = state.get("relevant_documents") or state.get("documents", [])
     context = _format_context(docs)
+    privacy_mode = state.get("privacy_mode")
 
-    llm = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, temperature=0.7)
+    llm = get_llm(TaskType.GENERATION, privacy_mode=privacy_mode)
     chain = RAG_PROMPT | llm
     result = chain.invoke({"context": context, "question": question})
 
@@ -40,8 +39,9 @@ def generate_rag_response(state: RAGState) -> RAGState:
 def generate_general_response(state: RAGState) -> RAGState:
     """일반 질문에 대한 LLM 직접 응답."""
     question = state["question"]
+    privacy_mode = state.get("privacy_mode")
 
-    llm = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, temperature=0.7)
+    llm = get_llm(TaskType.GENERATION, privacy_mode=privacy_mode)
     chain = GENERAL_PROMPT | llm
     result = chain.invoke({"question": question})
 

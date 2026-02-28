@@ -241,3 +241,85 @@ docker build -t pm-agent .
 cd pm-web
 npm run build
 ```
+
+## Hybrid AI Setup (Optional)
+
+로컬 Ollama를 활용한 Privacy-Preserving 모드를 사용하려면:
+
+```bash
+# 1. Ollama + pgvector 기동
+docker compose --profile local-ai up -d
+
+# 2. Ollama 모델 다운로드
+docker exec pm-ollama ollama pull llama3.2:3b
+docker exec pm-ollama ollama pull bge-m3
+
+# 3. pm-agent .env 설정
+OLLAMA_ENABLED=true
+PII_MASKING_ENABLED=true
+PRIVACY_MODE=security          # 또는 performance
+USE_LOCAL_VECTORSTORE=true     # 로컬 pgvector 사용 시
+```
+
+### Privacy Mode
+
+| Mode | 설명 |
+|------|------|
+| `performance` | OpenAI 우선 (빠른 응답, 클라우드 의존) |
+| `security` | Ollama 우선 (PII 보호, 로컬 처리) |
+
+### Ollama 모델 관리
+
+PII 감지와 경량 LLM에 사용되는 Ollama 모델을 교체할 수 있습니다.
+
+```bash
+# 설치된 모델 확인
+ollama list
+
+# 모델 다운로드
+ollama pull llama3.2:3b      # PII 감지용 (기본)
+ollama pull llama3.2:1b      # 경량 대안
+ollama pull bge-m3           # 임베딩용
+
+# 모델 삭제
+ollama rm <모델명>
+```
+
+모델 교체는 `pm-agent/.env` (또는 `app/config.py`)에서 설정합니다:
+
+| 환경변수 | 기본값 | 용도 |
+|----------|--------|------|
+| `OLLAMA_MODEL_PII` | `llama3.2:3b` | PII 감지 모델 |
+| `OLLAMA_MODEL_LIGHT` | `llama3.2:3b` | 경량 LLM (라우팅, 평가 등) |
+| `OLLAMA_EMBEDDING_MODEL` | `bge-m3` | 로컬 임베딩 모델 |
+
+```bash
+# 예: PII 감지를 1b 경량 모델로 교체
+OLLAMA_MODEL_PII=llama3.2:1b
+
+# 예: 더 큰 모델로 교체 (정확도 향상, 속도 저하)
+OLLAMA_MODEL_PII=llama3.1:8b
+ollama pull llama3.1:8b
+```
+
+> **참고**: 모델이 클수록 PII 감지 정확도가 높지만 응답 속도가 느려집니다. `llama3.2:3b`은 정확도와 속도의 균형점입니다.
+
+### PII 마스킹 파이프라인
+
+문서 업로드 시 PII가 자동으로 마스킹되어 벡터DB에 저장됩니다.
+
+```
+[파일 업로드] → 파싱 → 청킹 → PII 마스킹 (Ollama/regex)
+  → 마스킹된 텍스트로 임베딩 → Supabase 저장 (마스킹 content + pii_mapping)
+
+[채팅 질의] → 질문 마스킹 → 벡터 검색 (마스킹된 컨텍스트)
+  → OpenAI 질의 → 응답 언마스킹 (질문 PII + 문서 PII 복원) → 사용자
+```
+
+| 설정 | 기본값 | 설명 |
+|------|--------|------|
+| `PII_MASKING_ENABLED` | `true` | PII 마스킹 활성화 |
+| `PII_REGEX_FALLBACK` | `true` | Ollama 실패 시 한국어 정규식 fallback |
+| `OLLAMA_ENABLED` | `true` | Ollama LLM 기반 PII 감지 활성화 |
+
+Ollama 비활성화 시 정규식만으로 PII를 감지합니다 (전화번호, 이메일, 주민번호, 카드번호, 계좌번호).

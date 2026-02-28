@@ -1,2 +1,2 @@
-export type { ChatMessage } from './types';
+export type { ChatMessage, MaskingInfo } from './types';
 export { useChatStore } from './useChatStore';

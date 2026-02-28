@@ -1,9 +1,8 @@
 import logging
 
-from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 
-from app.config import settings
+from app.llm import get_llm, TaskType
 from app.prompts.rag_prompt import GRADER_PROMPT
 from app.graphs.states.rag_state import RAGState
 
@@ -22,7 +21,8 @@ def grade_documents(state: RAGState) -> RAGState:
             "nodes_executed": state["nodes_executed"] + ["grader"],
         }
 
-    llm = ChatOpenAI(model="gpt-4o-mini", api_key=settings.openai_api_key, temperature=0)
+    privacy_mode = state.get("privacy_mode")
+    llm = get_llm(TaskType.GRADING, privacy_mode=privacy_mode)
     chain = GRADER_PROMPT | llm
 
     relevant: list[Document] = []
