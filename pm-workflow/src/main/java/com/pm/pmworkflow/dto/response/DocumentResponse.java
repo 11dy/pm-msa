@@ -12,6 +12,7 @@ public class DocumentResponse {
 
     private Long id;
     private Long userId;
+    private Long projectId;
     private String filename;
     private String originalFilename;
     private String fileType;
@@ -27,6 +28,7 @@ public class DocumentResponse {
         return DocumentResponse.builder()
                 .id(document.getId())
                 .userId(document.getUserId())
+                .projectId(document.getProjectId())
                 .filename(document.getFilename())
                 .originalFilename(document.getOriginalFilename())
                 .fileType(document.getFileType())

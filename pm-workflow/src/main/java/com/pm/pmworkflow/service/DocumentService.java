@@ -20,6 +20,7 @@ public class DocumentService {
     public DocumentResponse register(DocumentRegisterRequest request) {
         Document document = Document.builder()
                 .userId(request.getUserId())
+                .projectId(request.getProjectId())
                 .filename(request.getFilename())
                 .originalFilename(request.getOriginalFilename())
                 .fileType(request.getFileType())
@@ -29,6 +30,14 @@ public class DocumentService {
 
         Document saved = documentRepository.save(document);
         return DocumentResponse.from(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> getDocumentsByProject(Long projectId) {
+        return documentRepository.findByProjectIdOrderByCreatedAtDesc(projectId)
+                .stream()
+                .map(DocumentResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)

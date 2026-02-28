@@ -28,8 +28,13 @@ public class DocumentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DocumentResponse>> getDocuments(Authentication authentication) {
+    public ResponseEntity<List<DocumentResponse>> getDocuments(
+            @RequestParam(required = false) Long projectId,
+            Authentication authentication) {
         Long userId = Long.parseLong(authentication.getPrincipal().toString());
+        if (projectId != null) {
+            return ResponseEntity.ok(documentService.getDocumentsByProject(projectId));
+        }
         return ResponseEntity.ok(documentService.getDocumentsByUser(userId));
     }
 

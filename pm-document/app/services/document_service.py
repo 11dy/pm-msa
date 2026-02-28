@@ -15,7 +15,7 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv"}
 DOCUMENT_EVENTS_TOPIC = "pm.document.events"
 
 
-async def upload_document(user_id: int, file: UploadFile) -> DocumentResponse:
+async def upload_document(user_id: int, file: UploadFile, project_id: int | None = None) -> DocumentResponse:
     """파일 업로드 → pm-workflow 등록 → Kafka 이벤트 발행."""
     original_filename = file.filename or "unknown"
     ext = os.path.splitext(original_filename)[1].lower()
@@ -29,6 +29,7 @@ async def upload_document(user_id: int, file: UploadFile) -> DocumentResponse:
     # 2. pm-workflow 내부 API 호출 → documentId 획득
     register_request = DocumentRegisterRequest(
         userId=user_id,
+        projectId=project_id,
         filename=unique_name,
         originalFilename=original_filename,
         fileType=ext.lstrip("."),

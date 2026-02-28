@@ -12,6 +12,8 @@ public class DocumentRegisterRequest {
     @NotNull
     private Long userId;
 
+    private Long projectId;
+
     @NotBlank
     private String filename;
 
