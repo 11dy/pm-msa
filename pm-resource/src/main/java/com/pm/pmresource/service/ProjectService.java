@@ -4,6 +4,7 @@ import com.pm.pmresource.domain.entity.Project;
 import com.pm.pmresource.domain.repository.ProjectRepository;
 import com.pm.pmresource.dto.request.ProjectCreateRequest;
 import com.pm.pmresource.dto.request.ProjectUpdateRequest;
+import com.pm.pmresource.dto.response.ProjectResponse;
 import com.pm.pmresource.exception.ResourceException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,15 @@ import java.util.List;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final ProjectDocumentService projectDocumentService;
+
+    public List<ProjectResponse> getProjectsWithDocumentCount(Long userId) {
+        return projectRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(project -> ProjectResponse.from(
+                        project,
+                        projectDocumentService.getDocumentCount(project.getId())))
+                .toList();
+    }
 
     public List<Project> getProjects(Long userId) {
         return projectRepository.findByUserIdOrderByCreatedAtDesc(userId);

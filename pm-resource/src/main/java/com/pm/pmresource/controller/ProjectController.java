@@ -24,9 +24,7 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getProjects(Authentication auth) {
         Long userId = Long.parseLong(auth.getName());
-        var projects = projectService.getProjects(userId).stream()
-                .map(ProjectResponse::from)
-                .toList();
+        var projects = projectService.getProjectsWithDocumentCount(userId);
         return ResponseEntity.ok(ApiResponse.success(projects));
     }
 

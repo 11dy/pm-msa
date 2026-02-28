@@ -53,6 +53,10 @@ spring:
               predicates:
                 - Path=/api/workflow-health/**
             # pm-resource
+            - id: pm-resource-project-document
+              uri: lb://PM-RESOURCE
+              predicates:
+                - Path=/api/project-document/**
             - id: pm-resource-project
               uri: lb://PM-RESOURCE
               predicates:

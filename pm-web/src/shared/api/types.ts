@@ -46,6 +46,7 @@ export interface ProjectResponse {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  documentCount: number;
 }
 
 export interface DocumentResponse {
