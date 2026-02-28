@@ -39,8 +39,11 @@ src/
 │   ├── chat/
 │   │   ├── ui/                 # ChatPanel, ChatInput, ChatMessage
 │   │   └── model/              # useChatStore, types
+│   ├── document/
+│   │   ├── ui/                 # DocumentPanel, UploadDocumentModal
+│   │   └── model/              # useDocumentStore, types
 │   └── project/
-│       ├── ui/                 # ProjectList, ProjectCard, ProjectCalendar, CreateProjectModal
+│       ├── ui/                 # ProjectList, ProjectCard, CreateProjectModal
 │       └── model/              # useProjectStore, types
 │
 ├── entities/                   # 비즈니스 엔티티
@@ -70,7 +73,8 @@ src/
 ## 주요 기능
 
 ### 대시보드
-- **프로젝트 관리**: 카드 뷰 / 캘린더 뷰 전환, 프로젝트 생성/요약
+- **프로젝트 관리**: 프로젝트 카드 목록, 프로젝트 생성/요약
+- **문서 관리**: 프로젝트 선택 시 DocumentPanel로 전환, 문서 업로드/삭제, 상태 추적
 - **AI 채팅**: pm-agent와 연동된 ChatGPT 스타일 채팅 패널 (SSE 스트리밍)
 
 ### 인증
@@ -125,6 +129,11 @@ Gateway를 통해 백엔드 서비스와 통신합니다.
 | 토큰 갱신 | POST /api/auth/refresh | pm-auth |
 | 로그아웃 | POST /api/auth/logout | pm-auth |
 | OAuth2 URL | GET /api/auth/oauth2/{provider} | pm-auth |
+| 프로젝트 목록 | GET /api/project | pm-resource |
+| 프로젝트 생성 | POST /api/project | pm-resource |
+| 문서 목록 | GET /api/documents?projectId=N | pm-workflow |
+| 문서 업로드 | POST /api/documents/upload | pm-document |
+| 문서 삭제 | DELETE /api/documents/{id} | pm-workflow |
 | AI 채팅 | POST /api/chat | pm-agent |
 
 ## 소셜 로그인 지원

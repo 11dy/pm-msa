@@ -19,6 +19,9 @@ public class Document extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(nullable = false)
     private String filename;
 

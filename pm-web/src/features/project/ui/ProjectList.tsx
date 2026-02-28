@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { FolderOpen, Loader2 } from 'lucide-react';
 import { useProjectStore } from '../model';
 import { ProjectCard } from './ProjectCard';
-import { ProjectCalendar } from './ProjectCalendar';
+import { DocumentPanel } from '@/features/document';
 import type { Project } from '../model';
 
 export function ProjectList() {
@@ -24,7 +24,13 @@ export function ProjectList() {
   };
 
   if (selectedProject) {
-    return <ProjectCalendar project={selectedProject} onBack={() => selectProject(null)} />;
+    return (
+      <DocumentPanel
+        projectId={selectedProject.id}
+        projectName={selectedProject.name}
+        onBack={() => selectProject(null)}
+      />
+    );
   }
 
   return (

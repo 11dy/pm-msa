@@ -15,6 +15,12 @@ pm-msa/
 ├── pm-auth/                      # 인증 서비스 (Spring Boot)
 │   └── src/main/
 │
+├── pm-resource/                  # 프로젝트 리소스 CRUD (Spring Boot)
+│   └── src/main/
+│
+├── pm-document/                  # 문서 처리 서비스 (FastAPI)
+│   └── app/
+│
 ├── pm-agent/                     # AI 에이전트 서비스 (FastAPI + LangGraph)
 │   └── app/
 │
@@ -31,8 +37,10 @@ pm-msa/
 |------|------|------|
 | `pm-infra` | Spring Cloud | 인프라 (Eureka, Gateway) |
 | `pm-auth` | Spring Boot | 인증/인가 서비스 (JWT, OAuth2) |
+| `pm-resource` | Spring Boot | 프로젝트 CRUD 서비스 |
+| `pm-document` | FastAPI | 문서 업로드, 파싱, 청킹 서비스 |
 | `pm-agent` | FastAPI + LangGraph | AI 에이전트 서비스 (RAG, 채팅) |
-| `pm-workflow` | Spring Boot | 워크플로우 서비스 (에이전트 관리, 대화, 문서 처리) |
+| `pm-workflow` | Spring Boot | 워크플로우 서비스 (에이전트 관리, 대화, 문서 메타데이터) |
 | `pm-web` | Next.js | 프론트엔드 |
 
 ## 기술 스택
@@ -73,6 +81,12 @@ pm-msa/
 │  pm-auth :8081              │
 │  (인증/인가)                 │
 │                             │
+│  pm-resource :8085          │
+│  (프로젝트 CRUD)             │
+│                             │
+│  pm-document :8082          │
+│  (문서 업로드/파싱)           │
+│                             │
 │  pm-agent :8083             │
 │  (AI 에이전트, RAG 채팅)     │
 │                             │
@@ -94,14 +108,19 @@ pm-msa/
 | Eureka Server | 8761 | 서비스 레지스트리 대시보드 |
 | Gateway | 8080 | API 진입점 |
 | pm-auth | 8081 | 인증 서비스 |
+| pm-document | 8082 | 문서 처리 서비스 |
 | pm-agent | 8083 | AI 에이전트 서비스 |
 | pm-workflow | 8084 | 워크플로우 서비스 |
+| pm-resource | 8085 | 프로젝트 리소스 서비스 |
 | pm-web | 3000 | 프론트엔드 |
 | Kafka | 9092 | 메시지 브로커 |
 
 ## 실행 방법
 
 ```bash
+# 0. 인프라 (Kafka, Redis, Zookeeper, Kafka UI)
+docker compose up -d
+
 # 1. Eureka Server 실행 (먼저)
 cd pm-infra
 ./gradlew :eureka-server:bootRun
@@ -111,23 +130,32 @@ cd pm-infra
 
 # 3. Auth 서비스 실행
 cd ../pm-auth
-./gradlew bootRun
+DB_PASSWORD=your_password ./gradlew bootRun
 
-# 4. Agent 서비스 실행
-cd ../pm-agent
-./run.sh
+# 4. Resource 서비스 실행
+cd ../pm-resource
+DB_PASSWORD=your_password ./gradlew bootRun
 
 # 5. Workflow 서비스 실행
 cd ../pm-workflow
-./gradlew bootRun
+DB_PASSWORD=your_password ./gradlew bootRun
 
-# 6. 프론트엔드 실행
+# 6. Document 서비스 실행
+cd ../pm-document
+uvicorn app.main:app --port 8082 --reload
+
+# 7. Agent 서비스 실행
+cd ../pm-agent
+uvicorn app.main:app --port 8083 --reload
+
+# 8. 프론트엔드 실행
 cd ../pm-web
 npm run dev
 
-# 7. 확인
+# 9. 확인
 # - Eureka 대시보드: http://localhost:8761
 # - Gateway: http://localhost:8080
+# - Document API 문서: http://localhost:8082/docs
 # - Agent API 문서: http://localhost:8083/docs
 # - Workflow Swagger: http://localhost:8084/swagger-ui.html
 # - 프론트엔드: http://localhost:3000
@@ -144,13 +172,21 @@ cd pm-infra
 cd pm-auth
 ./gradlew build
 
-# Agent 서비스 (Docker)
-cd pm-agent
-docker build -t pm-agent .
+# Resource 서비스 빌드
+cd pm-resource
+./gradlew build
 
 # Workflow 서비스 빌드
 cd pm-workflow
 ./gradlew build
+
+# Document 서비스 (Docker)
+cd pm-document
+docker build -t pm-document .
+
+# Agent 서비스 (Docker)
+cd pm-agent
+docker build -t pm-agent .
 
 # 프론트엔드 빌드
 cd pm-web

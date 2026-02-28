@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
 
 from app.dependencies import get_current_user
 from app.models.schemas import DocumentResponse
@@ -15,10 +15,11 @@ router = APIRouter(prefix="/api/documents")
 async def upload_document(
     file: UploadFile,
     background_tasks: BackgroundTasks,
+    project_id: int | None = Form(None),
     user_id: int = Depends(get_current_user),
 ):
     try:
-        doc = await document_service.upload_document(user_id, file)
+        doc = await document_service.upload_document(user_id, file, project_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -19,6 +19,10 @@ PM-AI-AGENT-ARCHITECTURE.txt
 RELEASE-GUIDE.txt
 WORK-PROGRESS.txt
 
+# Run scripts (local only)
+run.sh
+run_python.sh
+
 # Environment variables
 .env
 .env.local
