@@ -3,10 +3,12 @@ package com.pm.pmworkflow.kafka;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.pmworkflow.domain.entity.Document;
+import com.pm.pmworkflow.domain.entity.SuggestedQuestion;
 import com.pm.pmworkflow.domain.entity.WorkflowExecution;
 import com.pm.pmworkflow.domain.enums.DocumentStatus;
 import com.pm.pmworkflow.domain.repository.DocumentRepository;
 import com.pm.pmworkflow.domain.repository.WorkflowExecutionRepository;
+import com.pm.pmworkflow.service.SuggestedQuestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -20,6 +22,7 @@ public class WorkflowEventConsumer {
 
     private final DocumentRepository documentRepository;
     private final WorkflowExecutionRepository workflowExecutionRepository;
+    private final SuggestedQuestionService suggestedQuestionService;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
@@ -53,6 +56,23 @@ public class WorkflowEventConsumer {
                         doc.fail(error);
                         documentRepository.save(doc);
                     });
+                }
+                case "document.analysis.completed" -> {
+                    Long projectId = event.has("projectId") ? event.get("projectId").asLong() : null;
+                    JsonNode questionsNode = event.get("suggestedQuestions");
+                    if (questionsNode != null && questionsNode.isArray()) {
+                        var questions = new java.util.ArrayList<SuggestedQuestion>();
+                        for (JsonNode q : questionsNode) {
+                            questions.add(SuggestedQuestion.builder()
+                                    .documentId(documentId)
+                                    .projectId(projectId)
+                                    .question(q.get("question").asText())
+                                    .questionType(q.has("type") ? q.get("type").asText() : "document")
+                                    .build());
+                        }
+                        suggestedQuestionService.saveAll(questions);
+                        log.info("Saved {} suggested questions for document {}", questions.size(), documentId);
+                    }
                 }
             }
 

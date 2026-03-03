@@ -21,6 +21,7 @@ def _process_chunked_event(event: dict) -> None:
     """document.chunked 이벤트 처리: 임베딩 생성 → 벡터 저장."""
     document_id = event["documentId"]
     user_id = event.get("userId", 0)
+    project_id = event.get("projectId")
     chunks = event["chunks"]
     total_chunks = len(chunks)
 
@@ -44,7 +45,7 @@ def _process_chunked_event(event: dict) -> None:
         texts = [c["content"] for c in chunks]
         embeddings = generate_embeddings(texts)
 
-        stored_count = store_embeddings(document_id, user_id, chunks, embeddings)
+        stored_count = store_embeddings(document_id, user_id, chunks, embeddings, project_id=project_id)
 
         # embedding.completed 발행
         publish_event(DOCUMENT_EVENTS_TOPIC, {
@@ -53,6 +54,14 @@ def _process_chunked_event(event: dict) -> None:
             "embeddingCount": stored_count,
         })
         logger.info("Embedding completed: document=%d, count=%d", document_id, stored_count)
+
+        # 자동 분석 트리거 (별도 try-except — 실패해도 임베딩에 영향 없음)
+        if settings.auto_analysis_enabled:
+            try:
+                from app.services.analysis_service import generate_auto_analysis
+                generate_auto_analysis(document_id, user_id, project_id, chunks)
+            except Exception as analysis_error:
+                logger.error("Auto analysis failed (non-fatal): document=%d, error=%s", document_id, analysis_error)
 
     except Exception as e:
         logger.error("Embedding failed: document=%d, error=%s", document_id, e)

@@ -5,7 +5,7 @@ import type { ChatMessage, MaskingInfo } from './types';
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, projectId?: number | null) => Promise<void>;
   clearMessages: () => void;
 }
 
@@ -13,7 +13,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isLoading: false,
 
-  sendMessage: async (content: string) => {
+  sendMessage: async (content: string, projectId?: number | null) => {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -42,6 +42,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           question: content,
           user_id: 0,
           stream: true,
+          ...(projectId != null && { project_id: projectId }),
         }),
       });
 

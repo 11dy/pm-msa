@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     user_id: int = 0
     stream: bool = True
     privacy_mode: str | None = None  # "performance" | "security"
+    project_id: int | None = None
 
 
 class ChatResponse(BaseModel):
@@ -37,11 +38,11 @@ async def chat_message(req: ChatRequest):
 
     if req.stream:
         return EventSourceResponse(
-            _stream_generator(req.question, req.user_id, req.privacy_mode),
+            _stream_generator(req.question, req.user_id, req.privacy_mode, req.project_id),
             media_type="text/event-stream",
         )
 
-    result = chat_sync(req.question, req.user_id, privacy_mode=req.privacy_mode)
+    result = chat_sync(req.question, req.user_id, privacy_mode=req.privacy_mode, project_id=req.project_id)
     return ChatResponse(
         answer=result["answer"],
         route=result["route"],
@@ -57,10 +58,11 @@ async def _stream_generator(
     question: str,
     user_id: int,
     privacy_mode: str | None = None,
+    project_id: int | None = None,
 ):
     """SSE 이벤트 생성기. privacy 이벤트 타입 포함."""
     try:
-        async for event in chat_stream(question, user_id, privacy_mode=privacy_mode):
+        async for event in chat_stream(question, user_id, privacy_mode=privacy_mode, project_id=project_id):
             event_type = event["type"]
 
             if event_type == "privacy":

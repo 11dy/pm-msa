@@ -21,9 +21,9 @@ def _format_context(docs: list[Document]) -> str:
     return "\n\n".join(parts)
 
 
-def invoke_rag(question: str, user_id: int) -> str:
+def invoke_rag(question: str, user_id: int, project_id: int | None = None) -> str:
     """Naive RAG: 검색 → 컨텍스트 조합 → LLM 응답 (동기)."""
-    docs = retrieve_relevant_docs(question, user_id)
+    docs = retrieve_relevant_docs(question, user_id, project_id=project_id)
     context = _format_context(docs)
 
     llm = get_llm(TaskType.GENERATION)
@@ -44,13 +44,14 @@ async def stream_rag(
     question: str,
     user_id: int,
     doc_pii_callback: Any = None,
+    project_id: int | None = None,
 ) -> AsyncIterator[str]:
     """Naive RAG: 검색 → 컨텍스트 조합 → LLM 스트리밍.
 
     Args:
         doc_pii_callback: 호출 시 검색된 문서의 PII 매핑 목록을 전달받는 콜백.
     """
-    docs = retrieve_relevant_docs(question, user_id)
+    docs = retrieve_relevant_docs(question, user_id, project_id=project_id)
     context = _format_context(docs)
 
     # 문서 PII 매핑 수집 및 콜백

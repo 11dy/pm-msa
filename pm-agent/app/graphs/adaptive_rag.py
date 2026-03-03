@@ -85,6 +85,7 @@ def run_adaptive_rag(
     question: str,
     user_id: int,
     privacy_mode: str | None = None,
+    project_id: int | None = None,
 ) -> dict:
     """Adaptive RAG 워크플로우 실행."""
     execution_id = str(uuid.uuid4())
@@ -92,6 +93,7 @@ def run_adaptive_rag(
     initial_state: RAGState = {
         "question": question,
         "user_id": user_id,
+        "project_id": project_id,
         "route": "",
         "documents": [],
         "relevant_documents": [],

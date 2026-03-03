@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Privacy Mode: "performance" (OpenAI 우선) | "security" (Ollama 우선)
     privacy_mode: str = "performance"
 
+    # Auto Analysis
+    auto_analysis_enabled: bool = True
+
     # Local pgvector
     local_pgvector_host: str = "localhost"
     local_pgvector_port: int = 5433

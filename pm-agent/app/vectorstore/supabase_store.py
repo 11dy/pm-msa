@@ -10,6 +10,7 @@ def store_embeddings(
     user_id: int,
     chunks: list[dict],
     embeddings: list[list[float]],
+    project_id: int | None = None,
 ) -> int:
     """Supabase document_chunks 테이블에 임베딩 저장. 설정 미완시 건너뜀."""
     if not settings.supabase_url or not settings.supabase_key:
@@ -30,6 +31,8 @@ def store_embeddings(
             "embedding": embedding,
             "pii_mapping": chunk.get("pii_mapping"),
         }
+        if project_id is not None:
+            row["project_id"] = project_id
         client.table("document_chunks").insert(row).execute()
         stored += 1
 

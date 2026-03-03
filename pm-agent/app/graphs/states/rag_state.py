@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 class RAGState(TypedDict):
     question: str
     user_id: int
+    project_id: int | None
     route: str  # "rag" | "general"
     documents: list[Document]
     relevant_documents: list[Document]
