@@ -142,3 +142,38 @@ uvicorn app.main:app --host 0.0.0.0 --port 8083 --reload
 | Kafka | 이벤트 메시지 수신/발행 | 선택 |
 | OpenAI | LLM 및 임베딩 생성 | 필수 |
 | Supabase | 벡터 저장소 (pgvector) | 필수 |
+
+## 프로젝트별 채팅 + 자동 분석 (Phase 6)
+
+### 프로젝트별 RAG 검색
+
+채팅 API에 `project_id`를 전달하면 해당 프로젝트의 문서만 대상으로 벡터 검색합니다. `project_id`가 없으면 전체 문서에서 검색합니다.
+
+```
+POST /api/chat/message
+{
+  "question": "보고서 내용 요약해줘",
+  "user_id": 1,
+  "project_id": 3,    ← 프로젝트 필터
+  "stream": true
+}
+```
+
+project_id는 ChatRequest → RAGState → retriever_node → supabase_retriever/local_pgvector까지 전체 파이프라인을 관통합니다.
+
+### 문서 자동 분석
+
+임베딩 완료 후 자동으로 문서 분석 질문을 생성합니다 (`auto_analysis_enabled=True`).
+
+```
+임베딩 완료 → generate_auto_analysis()
+  1. 마스킹된 청크 상위 10개 → OpenAI로 세분화 질문 5개 생성
+  2. RAG로 기존 문서 검색 → 교차 분석 질문 3개 생성
+  3. PII 언마스킹 적용
+  4. Kafka document.analysis.completed 이벤트 발행
+```
+
+관련 파일:
+- `app/prompts/analysis_prompt.py` — 문서 질문 + 교차 분석 프롬프트
+- `app/services/analysis_service.py` — 자동 분석 서비스
+- `app/config.py` — `auto_analysis_enabled` 설정

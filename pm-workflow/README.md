@@ -180,7 +180,24 @@ PENDING → RUNNING → COMPLETED
 | | `workflow.completed` | 실행 상태 → COMPLETED |
 | | `workflow.failed` | 실행 상태 → FAILED |
 
+| `pm.document.events` | `document.analysis.completed` | 추천 질문 저장 (SuggestedQuestion) |
+
 모든 이벤트는 처리 후 WebSocket (`/topic/documents/{id}`, `/topic/workflows/{id}`)으로 프론트엔드에 실시간 전파됩니다.
+
+### 추천 질문 (Phase 6)
+
+문서 자동 분석 후 생성된 추천 질문을 저장하고 제공합니다.
+
+| Method | URL | Description | Auth |
+|--------|-----|-------------|------|
+| GET | `/api/documents/suggestions?projectId=N` | 프로젝트별 미사용 추천 질문 목록 | O |
+
+관련 파일:
+- `SuggestedQuestion.java` — 엔티티 (documentId, projectId, question, questionType, used)
+- `SuggestedQuestionRepository.java` — 프로젝트/문서별 조회
+- `SuggestedQuestionService.java` — 저장/조회
+- `SuggestedQuestionController.java` — REST API
+- `WorkflowEventConsumer.java` — `document.analysis.completed` 이벤트 핸들러
 
 ## WebSocket
 

@@ -323,3 +323,23 @@ ollama pull llama3.1:8b
 | `OLLAMA_ENABLED` | `true` | Ollama LLM 기반 PII 감지 활성화 |
 
 Ollama 비활성화 시 정규식만으로 PII를 감지합니다 (전화번호, 이메일, 주민번호, 카드번호, 계좌번호).
+
+### 프로젝트별 채팅 + 문서 자동 분석 (Phase 6)
+
+문서 업로드 시 프로젝트별 격리된 RAG 검색과 자동 분석 질문 생성을 지원합니다.
+
+```
+[문서 업로드] → pm-document → Kafka(document.chunked + projectId)
+  → pm-agent → PII 마스킹 → 임베딩 → Supabase 저장 (+project_id)
+  → 자동 분석: 마스킹된 내용 → OpenAI 질문 생성 + 교차 분석
+  → Kafka(document.analysis.completed) → pm-workflow 추천 질문 저장
+
+[채팅] → pm-agent(question, project_id)
+  → mask → retrieve(project_id 필터) → generate → unmask → 사용자
+```
+
+| 설정 | 기본값 | 설명 |
+|------|--------|------|
+| `AUTO_ANALYSIS_ENABLED` | `true` | 임베딩 완료 후 자동 질문 생성 |
+
+프론트엔드에서는 프로젝트 선택 시 캘린더 뷰 + 날짜별 문서 목록을 표시하고, 채팅 패널이 해당 프로젝트 문서만 대상으로 RAG 검색합니다.
