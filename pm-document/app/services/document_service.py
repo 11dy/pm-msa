@@ -78,7 +78,7 @@ async def upload_document(user_id: int, file: UploadFile, project_id: int | None
     return doc_response
 
 
-async def process_document(document_id: int, user_id: int, storage_path: str) -> None:
+async def process_document(document_id: int, user_id: int, storage_path: str, project_id: int | None = None) -> None:
     """백그라운드: 파싱 → 청킹 → Kafka 이벤트 발행."""
     try:
         # 1. 텍스트 추출
@@ -91,12 +91,15 @@ async def process_document(document_id: int, user_id: int, storage_path: str) ->
         chunks = chunker_service.chunk_text(text)
 
         # 3. document.chunked 이벤트 발행
-        publish_event(DOCUMENT_EVENTS_TOPIC, {
+        event = {
             "type": "document.chunked",
             "documentId": document_id,
             "userId": user_id,
             "chunks": [c.model_dump() for c in chunks],
-        })
+        }
+        if project_id is not None:
+            event["projectId"] = project_id
+        publish_event(DOCUMENT_EVENTS_TOPIC, event)
 
         logger.info("Document processed: id=%d, chunks=%d", document_id, len(chunks))
 

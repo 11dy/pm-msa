@@ -8,4 +8,5 @@ export type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
   ProjectResponse,
+  SuggestedQuestionResponse,
 } from './types';

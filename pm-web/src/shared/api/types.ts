@@ -49,6 +49,15 @@ export interface ProjectResponse {
   documentCount: number;
 }
 
+export interface SuggestedQuestionResponse {
+  id: number;
+  documentId: number;
+  projectId: number | null;
+  question: string;
+  questionType: string;
+  createdAt: string;
+}
+
 export interface DocumentResponse {
   id: number;
   userId: number;

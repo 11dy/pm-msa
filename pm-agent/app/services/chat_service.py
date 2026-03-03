@@ -19,9 +19,10 @@ def chat_sync(
     question: str,
     user_id: int,
     privacy_mode: str | None = None,
+    project_id: int | None = None,
 ) -> dict:
     """Adaptive RAG를 사용한 동기 채팅."""
-    result = run_adaptive_rag(question, user_id, privacy_mode=privacy_mode)
+    result = run_adaptive_rag(question, user_id, privacy_mode=privacy_mode, project_id=project_id)
 
     _publish_chat_event(user_id, question, result["answer"], result["route"])
 
@@ -32,6 +33,7 @@ async def chat_stream(
     question: str,
     user_id: int,
     privacy_mode: str | None = None,
+    project_id: int | None = None,
 ) -> AsyncIterator[dict]:
     """라우팅 후 SSE 스트리밍 응답. PII 마스킹/언마스킹 적용.
 
@@ -71,7 +73,7 @@ async def chat_stream(
         def _on_doc_pii(mappings: list[dict]) -> None:
             doc_pii_mappings.extend(mappings)
 
-        stream = stream_rag(masked_question, user_id, doc_pii_callback=_on_doc_pii)
+        stream = stream_rag(masked_question, user_id, doc_pii_callback=_on_doc_pii, project_id=project_id)
     else:
         stream = stream_general(masked_question)
 
@@ -121,6 +123,7 @@ def _classify_route(question: str, privacy_mode: str | None = None) -> str:
     state: RAGState = {
         "question": question,
         "user_id": 0,
+        "project_id": None,
         "route": "",
         "documents": [],
         "relevant_documents": [],
