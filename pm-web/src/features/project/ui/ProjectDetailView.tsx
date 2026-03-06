@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, Upload, FileText, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { useDocumentStore } from '@/features/document/model';
 import { UploadDocumentModal } from '@/features/document/ui/UploadDocumentModal';
-import { ProjectCalendar } from './ProjectCalendar';
 import type { Project } from '../model';
 import type { DocumentFile } from '@/features/document/model';
 
@@ -29,6 +28,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type SortOrder = 'newest' | 'oldest';
+
 interface ProjectDetailViewProps {
   project: Project;
   onBack: () => void;
@@ -37,27 +38,18 @@ interface ProjectDetailViewProps {
 export function ProjectDetailView({ project, onBack }: ProjectDetailViewProps) {
   const { documents, loading, fetchDocuments, deleteDocument } = useDocumentStore();
   const [showUpload, setShowUpload] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
 
   useEffect(() => {
     fetchDocuments(project.id);
   }, [project.id, fetchDocuments]);
 
-  // 날짜별 문서 그룹핑
-  const documentsByDate = useMemo(() => {
-    const map: Record<string, DocumentFile[]> = {};
-    for (const doc of documents) {
-      const date = doc.createdAt.split('T')[0];
-      if (!map[date]) map[date] = [];
-      map[date].push(doc);
-    }
-    return map;
-  }, [documents]);
-
-  // 문서가 있는 날짜 Set
-  const datesWithDocs = useMemo(() => new Set(Object.keys(documentsByDate)), [documentsByDate]);
-
-  const selectedDocs = selectedDate ? (documentsByDate[selectedDate] || []) : [];
+  const sortedDocuments = useMemo(() => {
+    return [...documents].sort((a, b) => {
+      const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortOrder === 'newest' ? -diff : diff;
+    });
+  }, [documents, sortOrder]);
 
   const handleUploaded = () => {
     fetchDocuments(project.id);
@@ -73,74 +65,61 @@ export function ProjectDetailView({ project, onBack }: ProjectDetailViewProps) {
           </button>
           <h2 className="font-semibold">{project.name}</h2>
         </div>
-        <Button size="sm" onClick={() => setShowUpload(true)}>
-          <Upload size={14} className="mr-1.5" />
-          업로드
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted hover:bg-card-hover transition-colors cursor-pointer"
+          >
+            <ArrowUpDown size={14} />
+            {sortOrder === 'newest' ? '최신순' : '오래된순'}
+          </button>
+          <Button size="sm" onClick={() => setShowUpload(true)}>
+            <Upload size={14} className="mr-1.5" />
+            업로드
+          </Button>
+        </div>
       </div>
 
-      {/* Calendar + Document List */}
-      <div className="flex-1 overflow-auto">
+      {/* Document List */}
+      <div className="flex-1 overflow-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 size={24} className="animate-spin text-muted" />
           </div>
-        ) : (
-          <>
-            {/* Calendar */}
-            <div className="p-4">
-              <ProjectCalendar
-                datesWithDocs={datesWithDocs}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-              />
-            </div>
-
-            {/* Date-based Document List */}
-            <div className="px-4 pb-4">
-              {selectedDate ? (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-muted">
-                      {selectedDate} ({selectedDocs.length}건)
-                    </h3>
+        ) : sortedDocuments.length > 0 ? (
+          <div className="grid gap-2">
+            {sortedDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-card-hover transition-colors"
+              >
+                <FileText size={20} className="text-accent shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{doc.originalFilename}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-muted">{doc.createdAt.split('T')[0]}</span>
+                    <span className="text-xs text-muted uppercase">{doc.fileType}</span>
+                    <span className="text-xs text-muted">{formatFileSize(doc.fileSize)}</span>
                   </div>
-                  {selectedDocs.length > 0 ? (
-                    <div className="grid gap-2">
-                      {selectedDocs.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-card-hover transition-colors"
-                        >
-                          <FileText size={20} className="text-accent shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm truncate">{doc.originalFilename}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-muted uppercase">{doc.fileType}</span>
-                              <span className="text-xs text-muted">{formatFileSize(doc.fileSize)}</span>
-                            </div>
-                          </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[doc.status]}`}>
-                            {STATUS_LABEL[doc.status]}
-                          </span>
-                          <button
-                            onClick={() => deleteDocument(doc.id)}
-                            className="p-1 rounded-lg text-muted hover:text-danger hover:bg-red-500/10 transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted">이 날짜에 업로드된 문서가 없습니다</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-muted text-center py-4">날짜를 선택하면 해당 날짜의 문서를 확인할 수 있습니다</p>
-              )}
-            </div>
-          </>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[doc.status]}`}>
+                  {STATUS_LABEL[doc.status]}
+                </span>
+                <button
+                  onClick={() => deleteDocument(doc.id)}
+                  className="p-1 rounded-lg text-muted hover:text-danger hover:bg-red-500/10 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center text-muted">
+            <FileText size={48} className="mb-3 opacity-30" />
+            <p className="text-sm">업로드된 문서가 없습니다</p>
+            <p className="text-xs mt-1">업로드 버튼으로 문서를 추가하세요</p>
+          </div>
         )}
       </div>
 
