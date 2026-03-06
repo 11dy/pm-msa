@@ -47,7 +47,6 @@ def search_documents(
                 "document_id": row["document_id"],
                 "similarity": row["similarity"],
                 "pii_mapping": row.get("pii_mapping"),
-                **(row.get("metadata") or {}),
             },
         ))
 
