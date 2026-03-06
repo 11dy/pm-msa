@@ -35,7 +35,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     try {
-      const res = await fetch(`${env.AGENT_BASE_URL}/api/chat/message`, {
+      const res = await fetch(`${env.API_BASE_URL}/agent/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

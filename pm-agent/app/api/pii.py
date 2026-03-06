@@ -14,7 +14,7 @@ from app.services.pii.masker import PIIMasker
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/pii")
+router = APIRouter(prefix="/agent/pii")
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv", ".xlsx", ".xls", ".hwp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
@@ -82,17 +82,20 @@ async def mask_document(file: UploadFile):
         raise HTTPException(status_code=400, detail="파일 크기가 5MB를 초과합니다")
 
     # 임시 파일로 저장 후 텍스트 추출
+    tmp_path = ""
     try:
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
 
+        logger.info("Extracting text: file=%s, ext=%s, size=%d, tmp=%s", filename, ext, len(content), tmp_path)
         text = _extract_text(tmp_path)
+        logger.info("Extracted %d chars from %s", len(text), filename)
     except Exception as e:
-        logger.error("Text extraction failed: %s", e)
+        logger.error("Text extraction failed: file=%s, error=%s", filename, e, exc_info=True)
         raise HTTPException(status_code=400, detail=f"텍스트 추출 실패: {e}")
     finally:
-        if os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
     if not text.strip():
