@@ -9,7 +9,7 @@ from app.services.chat_service import chat_sync, chat_stream
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+router = APIRouter(prefix="/agent/chat", tags=["chat"])
 
 
 class ChatRequest(BaseModel):

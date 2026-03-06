@@ -57,7 +57,7 @@ export function MaskDocumentModal({ isOpen, onClose }: MaskDocumentModalProps) {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const res = await fetch(`${env.AGENT_BASE_URL}/api/pii/mask`, {
+      const res = await fetch(`${env.API_BASE_URL}/agent/pii/mask`, {
         method: 'POST',
         body: formData,
       });
