@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, Upload, FileText, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Trash2, Loader2, ArrowUpDown, ShieldCheck } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { useDocumentStore } from '@/features/document/model';
 import { UploadDocumentModal } from '@/features/document/ui/UploadDocumentModal';
+import { MaskDocumentModal } from '@/features/document/ui/MaskDocumentModal';
 import type { Project } from '../model';
 import type { DocumentFile } from '@/features/document/model';
 
@@ -38,6 +39,7 @@ interface ProjectDetailViewProps {
 export function ProjectDetailView({ project, onBack }: ProjectDetailViewProps) {
   const { documents, loading, fetchDocuments, deleteDocument } = useDocumentStore();
   const [showUpload, setShowUpload] = useState(false);
+  const [showMask, setShowMask] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
 
   useEffect(() => {
@@ -73,6 +75,10 @@ export function ProjectDetailView({ project, onBack }: ProjectDetailViewProps) {
             <ArrowUpDown size={14} />
             {sortOrder === 'newest' ? '최신순' : '오래된순'}
           </button>
+          <Button size="sm" variant="ghost" onClick={() => setShowMask(true)}>
+            <ShieldCheck size={14} className="mr-1.5" />
+            마스킹
+          </Button>
           <Button size="sm" onClick={() => setShowUpload(true)}>
             <Upload size={14} className="mr-1.5" />
             업로드
@@ -129,6 +135,12 @@ export function ProjectDetailView({ project, onBack }: ProjectDetailViewProps) {
         onClose={() => setShowUpload(false)}
         projectId={project.id}
         onUploaded={handleUploaded}
+      />
+
+      {/* Mask Download Modal */}
+      <MaskDocumentModal
+        isOpen={showMask}
+        onClose={() => setShowMask(false)}
       />
     </div>
   );

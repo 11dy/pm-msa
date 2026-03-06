@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, chat
+from app.api import health, chat, pii
 from app.config import settings
 from app.kafka.consumer import start_consumer, stop_consumer
 from app.kafka.producer import close_producer
@@ -78,3 +78,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(chat.router)
+app.include_router(pii.router)
