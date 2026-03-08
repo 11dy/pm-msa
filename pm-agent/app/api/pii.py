@@ -68,6 +68,105 @@ def _extract_text(file_path: str) -> str:
         raise ValueError(f"Unsupported file type: {ext}")
 
 
+def _apply_mask_to_file(src_path: str, dst_path: str, mapping) -> None:
+    """원본 파일 포맷을 유지하면서 PII를 마스킹 토큰으로 치환."""
+    ext = os.path.splitext(src_path)[1].lower()
+
+    if not mapping.pii_detected:
+        # PII 없으면 원본 그대로 복사
+        import shutil
+        shutil.copy2(src_path, dst_path)
+        return
+
+    # 치환 맵: 원본값 → 마스크 토큰 (긴 것부터 치환하여 부분 매칭 방지)
+    replacements = sorted(
+        [(orig, token) for token, orig in mapping.mappings.items()],
+        key=lambda x: len(x[0]),
+        reverse=True,
+    )
+
+    def _replace_text(text: str) -> str:
+        for orig, token in replacements:
+            text = text.replace(orig, token)
+        return text
+
+    if ext == ".pdf":
+        _mask_pdf(src_path, dst_path, replacements)
+    elif ext == ".docx":
+        _mask_docx(src_path, dst_path, _replace_text)
+    elif ext in (".txt", ".md", ".csv"):
+        _mask_text_file(src_path, dst_path, _replace_text)
+    elif ext in (".xlsx", ".xls"):
+        _mask_xlsx(src_path, dst_path, _replace_text)
+    elif ext == ".hwp":
+        # HWP는 바이너리 포맷이라 원본 유지 불가 → txt로 fallback
+        _mask_text_file(src_path, dst_path, _replace_text, force_text=True)
+    else:
+        import shutil
+        shutil.copy2(src_path, dst_path)
+
+
+def _mask_pdf(src_path: str, dst_path: str, replacements: list[tuple[str, str]]) -> None:
+    """PDF 내 텍스트를 마스킹 토큰으로 치환."""
+    import fitz
+
+    doc = fitz.open(src_path)
+    for page in doc:
+        for orig, token in replacements:
+            hits = page.search_for(orig)
+            for rect in hits:
+                page.add_redact_annot(rect, text=token, fontsize=0)
+        page.apply_redactions()
+    doc.save(dst_path)
+    doc.close()
+
+
+def _mask_docx(src_path: str, dst_path: str, replace_fn) -> None:
+    """DOCX 내 텍스트를 마스킹 토큰으로 치환."""
+    from docx import Document
+
+    doc = Document(src_path)
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text:
+                run.text = replace_fn(run.text)
+    # 테이블 내 텍스트도 처리
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text:
+                            run.text = replace_fn(run.text)
+    doc.save(dst_path)
+
+
+def _mask_text_file(src_path: str, dst_path: str, replace_fn, force_text: bool = False) -> None:
+    """텍스트 기반 파일 마스킹."""
+    if force_text:
+        text = _extract_text(src_path)
+    else:
+        with open(src_path, "r", encoding="utf-8") as f:
+            text = f.read()
+    masked = replace_fn(text)
+    with open(dst_path, "w", encoding="utf-8") as f:
+        f.write(masked)
+
+
+def _mask_xlsx(src_path: str, dst_path: str, replace_fn) -> None:
+    """Excel 파일 내 셀 텍스트를 마스킹 토큰으로 치환."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(src_path)
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value is not None and isinstance(cell.value, str):
+                    cell.value = replace_fn(cell.value)
+    wb.save(dst_path)
+    wb.close()
+
+
 @router.post("/mask")
 async def mask_document(file: UploadFile):
     """파일을 PII 마스킹하여 마스킹 문서 + 대조표 ZIP으로 반환."""
@@ -93,25 +192,49 @@ async def mask_document(file: UploadFile):
         logger.info("Extracted %d chars from %s", len(text), filename)
     except Exception as e:
         logger.error("Text extraction failed: file=%s, error=%s", filename, e, exc_info=True)
-        raise HTTPException(status_code=400, detail=f"텍스트 추출 실패: {e}")
-    finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+        raise HTTPException(status_code=400, detail=f"텍스트 추출 실패: {e}")
 
     if not text.strip():
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
         raise HTTPException(status_code=400, detail="파일에서 텍스트를 추출할 수 없습니다")
 
     # PII 마스킹
     masker = PIIMasker()
-    masked_text, mapping = masker.mask(text)
+    _, mapping = masker.mask(text)
+
+    # 원본 포맷 유지하면서 마스킹 적용
+    base_name = os.path.splitext(filename)[0]
+    # HWP는 바이너리 포맷이라 txt로 fallback
+    out_ext = ".txt" if ext == ".hwp" else ext
+    masked_filename = f"{base_name}_masked{out_ext}"
+
+    tmp_out_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=out_ext, delete=False) as tmp_out:
+            tmp_out_path = tmp_out.name
+
+        _apply_mask_to_file(tmp_path, tmp_out_path, mapping)
+
+        with open(tmp_out_path, "rb") as f:
+            masked_bytes = f.read()
+    except Exception as e:
+        logger.error("Masking failed: file=%s, error=%s", filename, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"마스킹 처리 실패: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        if tmp_out_path and os.path.exists(tmp_out_path):
+            os.unlink(tmp_out_path)
 
     # ZIP 생성 (마스킹 문서 + 대조표)
-    base_name = os.path.splitext(filename)[0]
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 마스킹 문서
-        zf.writestr(f"{base_name}_masked.txt", masked_text)
+        # 마스킹 문서 (원본 포맷 유지)
+        zf.writestr(masked_filename, masked_bytes)
 
         # 대조표 CSV
         csv_buffer = io.StringIO()
