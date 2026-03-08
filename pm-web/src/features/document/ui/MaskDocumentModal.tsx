@@ -148,8 +148,11 @@ export function MaskDocumentModal({ isOpen, onClose }: MaskDocumentModalProps) {
     <Modal isOpen={isOpen} onClose={handleClose} title={isProcessing ? undefined : 'PII 마스킹 다운로드'}>
       {phase === 'select' && (
         <>
-          <p className="text-xs text-muted mb-4">
+          <p className="text-xs text-muted mb-2">
             파일의 개인정보(PII)를 마스킹 처리한 문서와 대조표를 ZIP으로 다운로드합니다.
+          </p>
+          <p className="text-xs text-muted/60 mb-4">
+            Excel 파일은 시트별 CSV로 변환되어 제공됩니다. (숨김 시트 제외)
           </p>
 
           <div
