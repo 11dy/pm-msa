@@ -68,13 +68,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS는 Gateway에서 처리 — pm-agent에서 중복 설정하면
+# access-control-allow-origin 헤더가 2번 전송되어 브라우저가 차단함
 
 app.include_router(health.router)
 app.include_router(chat.router)

@@ -1,11 +1,17 @@
 server:
   port: 8080
+  codec:
+    max-in-memory-size: 10MB
 
 spring:
   application:
     name: gateway
+  codec:
+    max-in-memory-size: 10MB
   cloud:
     gateway:
+      httpclient:
+        response-timeout: 60s
       server:
         webflux:
           routes:
