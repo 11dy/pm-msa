@@ -41,9 +41,10 @@ def _extract_text(file_path: str) -> str:
         from openpyxl import load_workbook
         wb = load_workbook(file_path, data_only=True)
         parts = []
-        for sheet in wb.sheetnames:
-            ws = wb[sheet]
-            parts.append(f"[시트: {sheet}]")
+        for ws in wb.worksheets:
+            if ws.sheet_state != "visible":
+                continue
+            parts.append(f"[시트: {ws.title}]")
             for row in ws.iter_rows(values_only=True):
                 cells = [str(c) if c is not None else "" for c in row]
                 if any(cells):
@@ -96,8 +97,6 @@ def _apply_mask_to_file(src_path: str, dst_path: str, mapping) -> None:
         _mask_docx(src_path, dst_path, _replace_text)
     elif ext in (".txt", ".md", ".csv"):
         _mask_text_file(src_path, dst_path, _replace_text)
-    elif ext in (".xlsx", ".xls"):
-        _mask_xlsx(src_path, dst_path, _replace_text)
     elif ext == ".hwp":
         # HWP는 바이너리 포맷이라 원본 유지 불가 → txt로 fallback
         _mask_text_file(src_path, dst_path, _replace_text, force_text=True)
@@ -153,18 +152,29 @@ def _mask_text_file(src_path: str, dst_path: str, replace_fn, force_text: bool =
         f.write(masked)
 
 
-def _mask_xlsx(src_path: str, dst_path: str, replace_fn) -> None:
-    """Excel 파일 내 셀 텍스트를 마스킹 토큰으로 치환."""
+def _mask_xlsx_to_csvs(src_path: str, replace_fn) -> list[tuple[str, str]]:
+    """Excel 파일을 시트별 CSV 스냅샷으로 추출 후 마스킹. 숨김 시트는 제외.
+
+    Returns:
+        list of (sheet_name, masked_csv_content)
+    """
     from openpyxl import load_workbook
 
-    wb = load_workbook(src_path)
+    wb = load_workbook(src_path, data_only=True)
+    results = []
     for ws in wb.worksheets:
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.value is not None and isinstance(cell.value, str):
-                    cell.value = replace_fn(cell.value)
-    wb.save(dst_path)
+        if ws.sheet_state != "visible":
+            continue
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        for row in ws.iter_rows(values_only=True):
+            cells = [str(c) if c is not None else "" for c in row]
+            if any(cells):
+                masked_cells = [replace_fn(c) for c in cells]
+                writer.writerow(masked_cells)
+        results.append((ws.title, csv_buffer.getvalue()))
     wb.close()
+    return results
 
 
 @router.post("/mask")
@@ -205,9 +215,62 @@ async def mask_document(file: UploadFile):
     masker = PIIMasker()
     _, mapping = masker.mask(text)
 
-    # 원본 포맷 유지하면서 마스킹 적용
     base_name = os.path.splitext(filename)[0]
-    # HWP는 바이너리 포맷이라 txt로 fallback
+
+    # 치환 함수 준비
+    if mapping.pii_detected:
+        replacements = sorted(
+            [(orig, token) for token, orig in mapping.mappings.items()],
+            key=lambda x: len(x[0]),
+            reverse=True,
+        )
+
+        def _replace_text(text: str) -> str:
+            for orig, token in replacements:
+                text = text.replace(orig, token)
+            return text
+    else:
+        def _replace_text(text: str) -> str:
+            return text
+
+    # 엑셀: 시트별 CSV 스냅샷 방식 (원본 구조 보존 불가하므로 데이터만 추출)
+    if ext in (".xlsx", ".xls"):
+        try:
+            sheet_csvs = _mask_xlsx_to_csvs(tmp_path, _replace_text)
+        except Exception as e:
+            logger.error("Excel CSV export failed: file=%s, error=%s", filename, e, exc_info=True)
+            raise HTTPException(status_code=500, detail=f"마스킹 처리 실패: {e}")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for sheet_name, csv_content in sheet_csvs:
+                zf.writestr(f"{base_name}_{sheet_name}_masked.csv", csv_content)
+
+            # 대조표
+            csv_buf = io.StringIO()
+            writer = csv.writer(csv_buf)
+            writer.writerow(["토큰", "원본값", "카테고리"])
+            if mapping.pii_detected:
+                for token, original in mapping.mappings.items():
+                    category = mapping.categories.get(token, "UNKNOWN")
+                    writer.writerow([token, original, category])
+            else:
+                writer.writerow(["-", "(PII 미감지)", "-"])
+            zf.writestr(f"{base_name}_pii_mapping.csv", csv_buf.getvalue())
+
+        zip_buffer.seek(0)
+        from urllib.parse import quote
+        encoded_name = quote(f"{base_name}_masked.zip")
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"},
+        )
+
+    # 기타 포맷: 원본 포맷 유지하면서 마스킹 적용
     out_ext = ".txt" if ext == ".hwp" else ext
     masked_filename = f"{base_name}_masked{out_ext}"
 
@@ -233,10 +296,8 @@ async def mask_document(file: UploadFile):
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 마스킹 문서 (원본 포맷 유지)
         zf.writestr(masked_filename, masked_bytes)
 
-        # 대조표 CSV
         csv_buffer = io.StringIO()
         writer = csv.writer(csv_buffer)
         writer.writerow(["토큰", "원본값", "카테고리"])
