@@ -127,8 +127,11 @@ async def mask_document(file: UploadFile):
 
     zip_buffer.seek(0)
 
+    from urllib.parse import quote
+
+    encoded_name = quote(f"{base_name}_masked.zip")
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{base_name}_masked.zip"'},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"},
     )

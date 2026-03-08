@@ -1,4 +1,4 @@
-"""Ollama 기반 PII 감지. Ollama 불가 시 한국어 정규식 fallback."""
+"""Ollama 기반 다국어 PII 감지. Ollama 불가 시 정규식 fallback."""
 
 import json
 import logging
@@ -28,16 +28,26 @@ class PIIDetectionResult:
         return len(self.entities) > 0
 
 
-# 한국어 PII 정규식 패턴
+# 다국어 PII 정규식 패턴
 _REGEX_PATTERNS: dict[str, re.Pattern] = {
+    # 국제 전화번호 (국가코드 포함) + 한국 지역번호
     "PHONE": re.compile(
-        r"(?:010|011|016|017|018|019|02|031|032|033|041|042|043|044|"
-        r"051|052|053|054|055|061|062|063|064)"
-        r"[-.\s]?\d{3,4}[-.\s]?\d{4}"
+        r"(?:\+\d{1,3}[-.\s]?)?"
+        r"(?:\(?\d{1,5}\)?[-.\s]?)?"
+        r"\d{2,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4}"
     ),
     "EMAIL": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
-    "ID_NUMBER": re.compile(r"\d{6}[-.\s]?[1-4]\d{6}"),
+    # 한국 주민등록번호
+    "ID_NUMBER_KR": re.compile(r"\d{6}[-.\s]?[1-4]\d{6}"),
+    # 미국 SSN
+    "ID_NUMBER_US": re.compile(r"\d{3}-\d{2}-\d{4}"),
+    # 일본 マイナンバー (12자리)
+    "ID_NUMBER_JP": re.compile(r"\d{4}[\s-]?\d{4}[\s-]?\d{4}"),
+    # 중국 身份证号 (18자리)
+    "ID_NUMBER_CN": re.compile(r"\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]"),
+    # 카드번호 (16자리)
     "CARD": re.compile(r"\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}"),
+    # 은행 계좌 (다양한 포맷)
     "ACCOUNT": re.compile(r"\d{3,6}[-.\s]?\d{2,6}[-.\s]?\d{2,6}(?:[-.\s]?\d{1,6})?"),
 }
 
@@ -102,10 +112,13 @@ class PIIDetector:
         return PIIDetectionResult(entities=entities, method="ollama")
 
     def _fallback_regex_detect(self, text: str) -> PIIDetectionResult:
-        """한국어 정규식 기반 PII 감지 (fallback)."""
+        """다국어 정규식 기반 PII 감지 (fallback)."""
         entities: list[PIIEntity] = []
 
-        for category, pattern in _REGEX_PATTERNS.items():
+        for raw_category, pattern in _REGEX_PATTERNS.items():
+            # ID_NUMBER_KR → ID_NUMBER 등 국가별 서브카테고리 정규화
+            category = "ID_NUMBER" if raw_category.startswith("ID_NUMBER") else raw_category
+
             for match in pattern.finditer(text):
                 entities.append(PIIEntity(
                     text=match.group(),
