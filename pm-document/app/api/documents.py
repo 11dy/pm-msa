@@ -32,6 +32,7 @@ async def upload_document(
         document_id=doc.id,
         user_id=user_id,
         storage_path=doc.storagePath,
+        project_id=project_id,
     )
 
     return doc

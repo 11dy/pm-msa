@@ -140,3 +140,17 @@ uvicorn app.main:app --host 0.0.0.0 --port 8082 --reload
 | document.uploaded | pm.document.events | 파일 업로드 완료 |
 | document.chunked | pm.document.events | 텍스트 청킹 완료 |
 | document.failed | pm.document.events | 처리 실패 |
+
+### Phase 6 변경사항
+
+`document.chunked` 이벤트에 `projectId` 필드가 추가되었습니다. `process_document()`에 `project_id` 파라미터가 전달되어, 다운스트림(pm-agent)에서 프로젝트별 벡터 저장이 가능합니다.
+
+```json
+{
+  "type": "document.chunked",
+  "documentId": 1,
+  "userId": 1,
+  "projectId": 3,
+  "chunks": [...]
+}
+```

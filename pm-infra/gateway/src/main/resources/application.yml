@@ -1,11 +1,17 @@
 server:
   port: 8080
+  codec:
+    max-in-memory-size: 10MB
 
 spring:
   application:
     name: gateway
+  codec:
+    max-in-memory-size: 10MB
   cloud:
     gateway:
+      httpclient:
+        response-timeout: 60s
       server:
         webflux:
           routes:
@@ -52,6 +58,15 @@ spring:
               uri: lb://PM-WORKFLOW
               predicates:
                 - Path=/api/workflow-health/**
+            # pm-agent
+            - id: pm-agent-chat
+              uri: lb://PM-AGENT
+              predicates:
+                - Path=/agent/chat/**
+            - id: pm-agent-pii
+              uri: lb://PM-AGENT
+              predicates:
+                - Path=/agent/pii/**
             # pm-resource
             - id: pm-resource-project-document
               uri: lb://PM-RESOURCE

@@ -59,6 +59,8 @@ export const useSessionStore = create<SessionState>()(
       name: 'session-storage',
       partialize: (state) => ({
         user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

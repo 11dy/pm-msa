@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, chat
+from app.api import health, chat, pii
 from app.config import settings
 from app.kafka.consumer import start_consumer, stop_consumer
 from app.kafka.producer import close_producer
@@ -68,13 +68,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS는 Gateway에서 처리 — pm-agent에서 중복 설정하면
+# access-control-allow-origin 헤더가 2번 전송되어 브라우저가 차단함
 
 app.include_router(health.router)
 app.include_router(chat.router)
+app.include_router(pii.router)

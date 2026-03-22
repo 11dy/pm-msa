@@ -40,7 +40,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/oauth2",
             "/login/oauth2",
             "/health",
-            "/actuator"
+            "/actuator",
+            "/agent"
     );
 
     @PostConstruct

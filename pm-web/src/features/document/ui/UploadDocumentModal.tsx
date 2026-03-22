@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button';
 import { useDocumentStore } from '../model';
 
 const ACCEPT = '.pdf,.docx,.txt,.md,.csv';
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -25,14 +26,19 @@ export function UploadDocumentModal({ isOpen, onClose, projectId, onUploaded }: 
   const { uploadDocument, uploading } = useDocumentStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [sizeError, setSizeError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
+    setSizeError(false);
     const ext = file.name.split('.').pop()?.toLowerCase();
     const allowed = ['pdf', 'docx', 'txt', 'md', 'csv'];
-    if (ext && allowed.includes(ext)) {
-      setSelectedFile(file);
+    if (!ext || !allowed.includes(ext)) return;
+    if (file.size > MAX_FILE_SIZE) {
+      setSizeError(true);
+      return;
     }
+    setSelectedFile(file);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -57,6 +63,7 @@ export function UploadDocumentModal({ isOpen, onClose, projectId, onUploaded }: 
   const handleClose = () => {
     if (!uploading) {
       setSelectedFile(null);
+      setSizeError(false);
       onClose();
     }
   };
@@ -87,8 +94,11 @@ export function UploadDocumentModal({ isOpen, onClose, projectId, onUploaded }: 
           파일을 드래그하거나 클릭하여 선택하세요
         </p>
         <p className="text-xs text-muted mt-1">
-          PDF, DOCX, TXT, MD, CSV 지원
+          PDF, DOCX, TXT, MD, CSV 지원 (최대 5MB)
         </p>
+        {sizeError && (
+          <p className="text-xs text-red-400 mt-2">파일 크기가 5MB를 초과합니다</p>
+        )}
       </div>
 
       {selectedFile && (

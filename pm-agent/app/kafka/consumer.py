@@ -7,7 +7,8 @@ from confluent_kafka import Consumer, KafkaError
 from app.config import settings
 from app.kafka.producer import publish_event
 from app.services.embedding_service import generate_embeddings
-from app.vectorstore.supabase_store import store_embeddings
+from app.services.pii.masker import PIIMasker
+from app.vectorstore.factory import store_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ def _process_chunked_event(event: dict) -> None:
     """document.chunked 이벤트 처리: 임베딩 생성 → 벡터 저장."""
     document_id = event["documentId"]
     user_id = event.get("userId", 0)
+    project_id = event.get("projectId")
     chunks = event["chunks"]
     total_chunks = len(chunks)
 
@@ -31,10 +33,19 @@ def _process_chunked_event(event: dict) -> None:
     })
 
     try:
+        # PII 마스킹 (활성화 시)
+        if settings.pii_masking_enabled:
+            masker = PIIMasker()
+            for chunk in chunks:
+                masked_text, mapping = masker.mask(chunk["content"])
+                chunk["content"] = masked_text
+                chunk["pii_mapping"] = mapping.to_dict() if mapping.pii_detected else None
+            logger.info("PII masking applied to %d chunks for document %d", total_chunks, document_id)
+
         texts = [c["content"] for c in chunks]
         embeddings = generate_embeddings(texts)
 
-        stored_count = store_embeddings(document_id, user_id, chunks, embeddings)
+        stored_count = store_embeddings(document_id, user_id, chunks, embeddings, project_id=project_id)
 
         # embedding.completed 발행
         publish_event(DOCUMENT_EVENTS_TOPIC, {
@@ -43,6 +54,14 @@ def _process_chunked_event(event: dict) -> None:
             "embeddingCount": stored_count,
         })
         logger.info("Embedding completed: document=%d, count=%d", document_id, stored_count)
+
+        # 자동 분석 트리거 (별도 try-except — 실패해도 임베딩에 영향 없음)
+        if settings.auto_analysis_enabled:
+            try:
+                from app.services.analysis_service import generate_auto_analysis
+                generate_auto_analysis(document_id, user_id, project_id, chunks)
+            except Exception as analysis_error:
+                logger.error("Auto analysis failed (non-fatal): document=%d, error=%s", document_id, analysis_error)
 
     except Exception as e:
         logger.error("Embedding failed: document=%d, error=%s", document_id, e)

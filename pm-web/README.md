@@ -38,12 +38,13 @@ src/
 │   │   └── api/                # authApi
 │   ├── chat/
 │   │   ├── ui/                 # ChatPanel, ChatInput, ChatMessage
+│   │   ├── api/                # fetchSuggestions (추천 질문 API)
 │   │   └── model/              # useChatStore, types
 │   ├── document/
 │   │   ├── ui/                 # DocumentPanel, UploadDocumentModal
 │   │   └── model/              # useDocumentStore, types
 │   └── project/
-│       ├── ui/                 # ProjectList, ProjectCard, CreateProjectModal
+│       ├── ui/                 # ProjectList, ProjectCard, ProjectDetailView, ProjectCalendar, CreateProjectModal
 │       └── model/              # useProjectStore, types
 │
 ├── entities/                   # 비즈니스 엔티티
@@ -74,8 +75,10 @@ src/
 
 ### 대시보드
 - **프로젝트 관리**: 프로젝트 카드 목록, 프로젝트 생성/요약
-- **문서 관리**: 프로젝트 선택 시 DocumentPanel로 전환, 문서 업로드/삭제, 상태 추적
+- **프로젝트 상세**: 캘린더 뷰 + 날짜별 문서 목록 (ProjectDetailView), 문서 업로드/삭제, 상태 추적
 - **AI 채팅**: pm-agent와 연동된 ChatGPT 스타일 채팅 패널 (SSE 스트리밍)
+  - 프로젝트 선택 시 해당 프로젝트 문서만 RAG 검색
+  - 자동 생성된 추천 질문 pill 버튼 (클릭 시 채팅 전송)
 
 ### 인증
 - 이메일/비밀번호 로그인
@@ -134,7 +137,8 @@ Gateway를 통해 백엔드 서비스와 통신합니다.
 | 문서 목록 | GET /api/documents?projectId=N | pm-workflow |
 | 문서 업로드 | POST /api/documents/upload | pm-document |
 | 문서 삭제 | DELETE /api/documents/{id} | pm-workflow |
-| AI 채팅 | POST /api/chat | pm-agent |
+| AI 채팅 | POST /api/chat/message | pm-agent |
+| 추천 질문 | GET /api/documents/suggestions?projectId=N | pm-workflow |
 
 ## 소셜 로그인 지원
 

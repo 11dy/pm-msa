@@ -14,6 +14,7 @@ def search_documents(
     match_threshold: float = 0.5,
     match_count: int = 5,
     document_ids: list[int] | None = None,
+    project_id: int | None = None,
 ) -> list[Document]:
     """Supabase pgvector에서 유사도 검색 수행."""
     if not settings.supabase_url or not settings.supabase_key:
@@ -32,6 +33,8 @@ def search_documents(
     }
     if document_ids:
         params["filter_document_ids"] = document_ids
+    if project_id is not None:
+        params["filter_project_id"] = project_id
 
     result = client.rpc("match_document_chunks", params).execute()
 
@@ -43,7 +46,7 @@ def search_documents(
                 "id": row["id"],
                 "document_id": row["document_id"],
                 "similarity": row["similarity"],
-                **(row.get("metadata") or {}),
+                "pii_mapping": row.get("pii_mapping"),
             },
         ))
 
@@ -56,6 +59,7 @@ def retrieve_relevant_docs(
     user_id: int,
     match_count: int = 5,
     document_ids: list[int] | None = None,
+    project_id: int | None = None,
 ) -> list[Document]:
     """쿼리 텍스트로 관련 문서 검색. 임베딩 생성 → 벡터 검색."""
     from app.services.embedding_service import generate_embeddings
@@ -69,4 +73,5 @@ def retrieve_relevant_docs(
         user_id=user_id,
         match_count=match_count,
         document_ids=document_ids,
+        project_id=project_id,
     )

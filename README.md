@@ -1,6 +1,23 @@
 # pm-msa (Personal Manager)
 
-Spring Cloud + Python 기반 마이크로서비스 아키텍처 모노레포
+PII 마스킹 기반 프로젝트별 AI 문서 질의 서비스
+
+## 핵심 기능
+
+### 1. Adaptive RAG 채팅
+LangGraph 상태머신 기반 AI 채팅 시스템. 질문을 자동 분류(rag/general)하고, 문서 검색 → 관련성 평가 → 응답 생성/쿼리 재작성을 수행합니다. SSE 스트리밍으로 실시간 토큰 단위 응답을 전송합니다.
+
+### 2. 문서 처리 파이프라인
+파일 업로드 → 파싱(PDF/DOCX/TXT/Excel/HWP) → 청킹 → 임베딩 → Supabase pgvector 저장까지 전체 자동화. Kafka 이벤트 드리븐으로 서비스 간 비동기 연결합니다.
+
+### 3. Privacy-Preserving AI
+문서 저장 시점에 PII(개인정보)를 `[MASK_N]` 토큰으로 마스킹하여 벡터DB에 저장하고, 채팅 응답 시 문서 PII + 질문 PII를 병합하여 원본 복원합니다. Ollama 로컬 LLM 우선, 실패 시 한국어 정규식 fallback으로 동작합니다.
+
+### 4. 프로젝트별 데이터 격리 + 문서 자동 분석
+업로드 → 임베딩 → 벡터검색 → 채팅까지 project_id 기반 격리. 임베딩 완료 시 LLM이 추천 질문 5개 + 교차 분석 질문 3개를 자동 생성하여, 채팅 시작 시 추천 질문 버튼으로 표시합니다.
+
+### 5. MSA 인프라
+Spring Cloud Eureka + Gateway로 7개 서비스 오케스트레이션. Kafka 이벤트 드리븐 아키텍처, JWT 인증 + Gateway 레벨 라우팅을 제공합니다.
 
 ## 프로젝트 구조
 
@@ -241,3 +258,105 @@ docker build -t pm-agent .
 cd pm-web
 npm run build
 ```
+
+## Hybrid AI Setup (Optional)
+
+로컬 Ollama를 활용한 Privacy-Preserving 모드를 사용하려면:
+
+```bash
+# 1. Ollama + pgvector 기동
+docker compose --profile local-ai up -d
+
+# 2. Ollama 모델 다운로드
+docker exec pm-ollama ollama pull llama3.2:3b
+docker exec pm-ollama ollama pull bge-m3
+
+# 3. pm-agent .env 설정
+OLLAMA_ENABLED=true
+PII_MASKING_ENABLED=true
+PRIVACY_MODE=security          # 또는 performance
+USE_LOCAL_VECTORSTORE=true     # 로컬 pgvector 사용 시
+```
+
+### Privacy Mode
+
+| Mode | 설명 |
+|------|------|
+| `performance` | OpenAI 우선 (빠른 응답, 클라우드 의존) |
+| `security` | Ollama 우선 (PII 보호, 로컬 처리) |
+
+### Ollama 모델 관리
+
+PII 감지와 경량 LLM에 사용되는 Ollama 모델을 교체할 수 있습니다.
+
+```bash
+# 설치된 모델 확인
+ollama list
+
+# 모델 다운로드
+ollama pull llama3.2:3b      # PII 감지용 (기본)
+ollama pull llama3.2:1b      # 경량 대안
+ollama pull bge-m3           # 임베딩용
+
+# 모델 삭제
+ollama rm <모델명>
+```
+
+모델 교체는 `pm-agent/.env` (또는 `app/config.py`)에서 설정합니다:
+
+| 환경변수 | 기본값 | 용도 |
+|----------|--------|------|
+| `OLLAMA_MODEL_PII` | `llama3.2:3b` | PII 감지 모델 |
+| `OLLAMA_MODEL_LIGHT` | `llama3.2:3b` | 경량 LLM (라우팅, 평가 등) |
+| `OLLAMA_EMBEDDING_MODEL` | `bge-m3` | 로컬 임베딩 모델 |
+
+```bash
+# 예: PII 감지를 1b 경량 모델로 교체
+OLLAMA_MODEL_PII=llama3.2:1b
+
+# 예: 더 큰 모델로 교체 (정확도 향상, 속도 저하)
+OLLAMA_MODEL_PII=llama3.1:8b
+ollama pull llama3.1:8b
+```
+
+> **참고**: 모델이 클수록 PII 감지 정확도가 높지만 응답 속도가 느려집니다. `llama3.2:3b`은 정확도와 속도의 균형점입니다.
+
+### PII 마스킹 파이프라인
+
+문서 업로드 시 PII가 자동으로 마스킹되어 벡터DB에 저장됩니다.
+
+```
+[파일 업로드] → 파싱 → 청킹 → PII 마스킹 (Ollama/regex)
+  → 마스킹된 텍스트로 임베딩 → Supabase 저장 (마스킹 content + pii_mapping)
+
+[채팅 질의] → 질문 마스킹 → 벡터 검색 (마스킹된 컨텍스트)
+  → OpenAI 질의 → 응답 언마스킹 (질문 PII + 문서 PII 복원) → 사용자
+```
+
+| 설정 | 기본값 | 설명 |
+|------|--------|------|
+| `PII_MASKING_ENABLED` | `true` | PII 마스킹 활성화 |
+| `PII_REGEX_FALLBACK` | `true` | Ollama 실패 시 한국어 정규식 fallback |
+| `OLLAMA_ENABLED` | `true` | Ollama LLM 기반 PII 감지 활성화 |
+
+Ollama 비활성화 시 정규식만으로 PII를 감지합니다 (전화번호, 이메일, 주민번호, 카드번호, 계좌번호).
+
+### 프로젝트별 채팅 + 문서 자동 분석 (Phase 6)
+
+문서 업로드 시 프로젝트별 격리된 RAG 검색과 자동 분석 질문 생성을 지원합니다.
+
+```
+[문서 업로드] → pm-document → Kafka(document.chunked + projectId)
+  → pm-agent → PII 마스킹 → 임베딩 → Supabase 저장 (+project_id)
+  → 자동 분석: 마스킹된 내용 → OpenAI 질문 생성 + 교차 분석
+  → Kafka(document.analysis.completed) → pm-workflow 추천 질문 저장
+
+[채팅] → pm-agent(question, project_id)
+  → mask → retrieve(project_id 필터) → generate → unmask → 사용자
+```
+
+| 설정 | 기본값 | 설명 |
+|------|--------|------|
+| `AUTO_ANALYSIS_ENABLED` | `true` | 임베딩 완료 후 자동 질문 생성 |
+
+프론트엔드에서는 프로젝트 선택 시 캘린더 뷰 + 날짜별 문서 목록을 표시하고, 채팅 패널이 해당 프로젝트 문서만 대상으로 RAG 검색합니다.
