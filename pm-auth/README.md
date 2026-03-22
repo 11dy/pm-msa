@@ -65,44 +65,6 @@ pm-auth/
         └── GlobalExceptionHandler.java # 전역 예외 처리
 ```
 
-## 데이터베이스 스키마
-
-> FK 제약조건 없이 설계 (애플리케이션 레벨에서 관계 관리)
-
-```sql
--- 사용자 기본 정보
-CREATE TABLE users (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
-    email       VARCHAR(255) NOT NULL UNIQUE,
-    user_nm     VARCHAR(100),
-    act_st      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE, INACTIVE, SUSPENDED
-    role        VARCHAR(50) NOT NULL DEFAULT 'ROLE_USER',
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- 인증 방식 관리 (비밀번호 로그인 + OAuth2 로그인)
-CREATE TABLE user_auth (
-    id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id       BIGINT NOT NULL,
-    provider      VARCHAR(50) NOT NULL,  -- LOCAL, GOOGLE, KAKAO, NAVER
-    provider_id   VARCHAR(255),
-    password      VARCHAR(255),          -- LOCAL일 때만 사용
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_provider_provider_id (provider, provider_id)
-);
-
--- JWT Refresh Token 관리
-CREATE TABLE refresh_tokens (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id     BIGINT NOT NULL,
-    token       VARCHAR(500) NOT NULL UNIQUE,
-    device_info VARCHAR(255),
-    expires_at  DATETIME NOT NULL,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-```
-
 ## API 엔드포인트
 
 ### 인증 API
