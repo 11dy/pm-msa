@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -115,7 +116,7 @@ public class OAuth2Controller {
 
         log.debug("Getting linked providers for userId: {}", userId);
 
-        var providers = oAuth2Service.getLinkedProviders(userId);
+        List<String> providers = oAuth2Service.getLinkedProviders(userId);
         LinkedProvidersResponse response = LinkedProvidersResponse.of(providers);
 
         return ResponseEntity.ok(ApiResponse.success("연동된 소셜 계정 목록 조회 완료", response));

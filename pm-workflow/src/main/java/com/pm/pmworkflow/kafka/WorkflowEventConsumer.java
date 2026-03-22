@@ -61,7 +61,7 @@ public class WorkflowEventConsumer {
                     Long projectId = event.has("projectId") ? event.get("projectId").asLong() : null;
                     JsonNode questionsNode = event.get("suggestedQuestions");
                     if (questionsNode != null && questionsNode.isArray()) {
-                        var questions = new java.util.ArrayList<SuggestedQuestion>();
+                        java.util.ArrayList<SuggestedQuestion> questions = new java.util.ArrayList<>();
                         for (JsonNode q : questionsNode) {
                             questions.add(SuggestedQuestion.builder()
                                     .documentId(documentId)

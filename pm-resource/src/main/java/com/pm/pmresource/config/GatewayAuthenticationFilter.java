@@ -29,9 +29,9 @@ public class GatewayAuthenticationFilter extends OncePerRequestFilter {
         String role = request.getHeader(USER_ROLE_HEADER);
 
         if (StringUtils.hasText(userId)) {
-            var authorities = List.of(new SimpleGrantedAuthority(
+            List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(
                     StringUtils.hasText(role) ? role : "ROLE_USER"));
-            var authentication = new UsernamePasswordAuthenticationToken(userId, email, authorities);
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userId, email, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
