@@ -19,6 +19,7 @@ CLAUDE.md
 PM-AI-AGENT-ARCHITECTURE.txt
 RELEASE-GUIDE.txt
 WORK-PROGRESS.txt
+DB-SCHEMA.txt
 
 # Run scripts (local only)
 run.sh

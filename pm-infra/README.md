@@ -90,10 +90,13 @@ pm-infra/
 └─────────────────┘
          ▲
          │ 서비스 등록
-┌────────┴────────┐
-│  pm-auth :8081  │
-│  pm-agent :8083 │
-└─────────────────┘
+┌────────┴────────────────────┐
+│  pm-auth :8081              │
+│  pm-resource :8085          │
+│  pm-document :8082          │
+│  pm-agent :8083             │
+│  pm-workflow :8084          │
+└─────────────────────────────┘
 ```
 
 ## Gateway 기능
@@ -127,6 +130,14 @@ Gateway에서 JWT 토큰을 검증하고 사용자 정보를 헤더에 추가하
 | `/api/auth/**` | PM-AUTH |
 | `/oauth2/**` | PM-AUTH |
 | `/login/oauth2/**` | PM-AUTH |
+| `POST /api/documents/upload` | PM-DOCUMENT |
+| `GET/DELETE /api/documents/**` | PM-WORKFLOW |
+| `/api/project/**` | PM-RESOURCE |
+| `/api/agents/**` | PM-WORKFLOW |
+| `/api/conversations/**` | PM-WORKFLOW |
+| `/api/workflows/**` | PM-WORKFLOW |
+| `/api/chat/**` | PM-AGENT |
+| `/api/pii/**` | PM-AGENT |
 
 ## 실행 방법
 

@@ -16,7 +16,10 @@ LangGraph 상태머신 기반 AI 채팅 시스템. 질문을 자동 분류(rag/g
 ### 4. 프로젝트별 데이터 격리 + 문서 자동 분석
 업로드 → 임베딩 → 벡터검색 → 채팅까지 project_id 기반 격리. 임베딩 완료 시 LLM이 추천 질문 5개 + 교차 분석 질문 3개를 자동 생성하여, 채팅 시작 시 추천 질문 버튼으로 표시합니다.
 
-### 5. MSA 인프라
+### 5. 문서 마스킹 다운로드
+업로드한 문서의 PII를 마스킹하여 다운로드할 수 있습니다. PDF/DOCX는 원본 포맷을 유지하고, Excel은 시트별 CSV 스냅샷으로 변환됩니다 (숨김 시트 자동 제외). 마스킹된 파일과 PII 대조표를 ZIP으로 반환합니다.
+
+### 6. MSA 인프라
 Spring Cloud Eureka + Gateway로 7개 서비스 오케스트레이션. Kafka 이벤트 드리븐 아키텍처, JWT 인증 + Gateway 레벨 라우팅을 제공합니다.
 
 ## 프로젝트 구조
@@ -117,55 +120,6 @@ pm-msa/
  Kafka     Supabase
  :9092     (Vector DB)
 ```
-
-## 데이터베이스 구조
-
-MySQL에 2개의 DB를 분리 운영합니다.
-
-### dy_db — 핵심 도메인 (사용자, 리소스)
-
-pm-auth, pm-resource가 공유하는 DB. 변경이 적고 여러 서비스가 참조하는 핵심 데이터.
-
-| 테이블 | 모듈 | 용도 | 주요 컬럼 |
-|--------|------|------|-----------|
-| `users` | pm-auth | 사용자 계정 | id, email, user_nm, role, act_st |
-| `user_auth` | pm-auth | 인증 정보 | user_id, provider(LOCAL/GOOGLE/KAKAO), password |
-| `refresh_tokens` | pm-auth | JWT 리프레시 토큰 | user_id, token, expires_at |
-| `project` | pm-resource | 프로젝트 | user_id, name, description |
-
-### pm_workflow — AI 워크플로우 도메인
-
-pm-workflow 전용 DB. 대화, 메시지, 문서 등 빠르게 증가하는 AI 워크플로우 데이터.
-
-| 테이블 | 용도 | 주요 컬럼 |
-|--------|------|-----------|
-| `agents` | AI 에이전트 설정 | user_id, name, system_prompt, model, temperature |
-| `conversations` | 대화 세션 | user_id, agent_id, title, status |
-| `messages` | 채팅 메시지 | conversation_id, role(USER/ASSISTANT), content |
-| `documents` | 업로드 문서 메타데이터 | user_id, project_id, filename, status, chunk_count |
-| `agent_documents` | 에이전트-문서 연결 | agent_id, document_id |
-| `workflow_executions` | LangGraph 실행 추적 | conversation_id, workflow_type, graph_state |
-
-### DB 분리 이유
-
-```
-dy_db (핵심 도메인)              pm_workflow (AI 도메인)
-┌─────────────────┐            ┌──────────────────────┐
-│ users            │◄───────────│ agents               │
-│ user_auth        │    user_id │ conversations        │
-│ refresh_tokens   │            │ messages             │
-│ project          │◄───────────│ documents            │
-└─────────────────┘  project_id│ agent_documents      │
-                               │ workflow_executions   │
-                               └──────────────────────┘
-```
-
-- **데이터 증가 패턴이 다름**: dy_db는 사용자/프로젝트 등 느리게 증가, pm_workflow는 대화/메시지 등 빠르게 증가
-- **독립적 스케일링**: 워크플로우 데이터가 폭증해도 인증/리소스 DB에 영향 없음
-- **장애 격리**: 한쪽 DB에 부하가 걸려도 다른 쪽 서비스는 정상 운영
-- **MSA Database-per-Service 패턴**: 도메인 경계에 따라 DB를 분리하는 마이크로서비스 원칙 적용
-
-> 크로스 DB이므로 테이블 간 FK는 DB 제약조건이 아닌 애플리케이션 레벨에서 user_id, project_id로 참조합니다.
 
 ## 포트 정보
 
@@ -359,4 +313,4 @@ Ollama 비활성화 시 정규식만으로 PII를 감지합니다 (전화번호,
 |------|--------|------|
 | `AUTO_ANALYSIS_ENABLED` | `true` | 임베딩 완료 후 자동 질문 생성 |
 
-프론트엔드에서는 프로젝트 선택 시 캘린더 뷰 + 날짜별 문서 목록을 표시하고, 채팅 패널이 해당 프로젝트 문서만 대상으로 RAG 검색합니다.
+프론트엔드에서는 프로젝트 선택 시 문서 목록(정렬 토글)을 표시하고, 채팅 패널이 해당 프로젝트 문서만 대상으로 RAG 검색합니다.

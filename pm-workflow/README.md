@@ -43,7 +43,8 @@ pm-workflow/
     │   │   ├── Message.java                   # 메시지
     │   │   ├── Document.java                  # 문서 (임베딩 대상)
     │   │   ├── AgentDocument.java             # 에이전트-문서 연결
-    │   │   └── WorkflowExecution.java         # 워크플로우 실행 기록
+    │   │   ├── WorkflowExecution.java         # 워크플로우 실행 기록
+    │   │   └── SuggestedQuestion.java         # 추천 질문
     │   ├── enums/
     │   │   ├── ConversationStatus.java        # ACTIVE, ARCHIVED, DELETED
     │   │   ├── MessageRole.java               # USER, ASSISTANT, SYSTEM, TOOL
