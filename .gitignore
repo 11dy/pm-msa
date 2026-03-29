@@ -29,3 +29,4 @@ run_python.sh
 .env
 .env.local
 .env.*.local
+k6/.env
