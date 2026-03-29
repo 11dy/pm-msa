@@ -1,5 +1,6 @@
 package com.pm.pmworkflow.controller;
 
+import com.pm.pmworkflow.domain.entity.Conversation;
 import com.pm.pmworkflow.dto.request.ConversationCreateRequest;
 import com.pm.pmworkflow.dto.response.*;
 import com.pm.pmworkflow.service.ConversationService;
@@ -22,7 +23,7 @@ public class ConversationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ConversationResponse>>> getConversations(Authentication auth) {
         Long userId = Long.parseLong(auth.getName());
-        var conversations = conversationService.getConversations(userId).stream()
+        List<ConversationResponse> conversations = conversationService.getConversations(userId).stream()
                 .map(ConversationResponse::from)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(conversations));
@@ -30,11 +31,11 @@ public class ConversationController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ConversationDetailResponse>> getConversation(@PathVariable Long id) {
-        var conversation = conversationService.getConversation(id);
-        var messages = conversationService.getMessages(id).stream()
+        Conversation conversation = conversationService.getConversation(id);
+        List<MessageResponse> messages = conversationService.getMessages(id).stream()
                 .map(MessageResponse::from)
                 .toList();
-        var detail = ConversationDetailResponse.builder()
+        ConversationDetailResponse detail = ConversationDetailResponse.builder()
                 .conversation(ConversationResponse.from(conversation))
                 .messages(messages)
                 .build();
@@ -45,7 +46,7 @@ public class ConversationController {
     public ResponseEntity<ApiResponse<ConversationResponse>> createConversation(
             Authentication auth, @Valid @RequestBody ConversationCreateRequest request) {
         Long userId = Long.parseLong(auth.getName());
-        var conversation = conversationService.createConversation(userId, request);
+        Conversation conversation = conversationService.createConversation(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(ConversationResponse.from(conversation)));
     }

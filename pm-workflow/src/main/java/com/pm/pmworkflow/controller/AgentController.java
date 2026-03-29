@@ -1,5 +1,6 @@
 package com.pm.pmworkflow.controller;
 
+import com.pm.pmworkflow.domain.entity.Agent;
 import com.pm.pmworkflow.dto.request.AgentCreateRequest;
 import com.pm.pmworkflow.dto.request.AgentUpdateRequest;
 import com.pm.pmworkflow.dto.response.AgentResponse;
@@ -24,7 +25,7 @@ public class AgentController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<AgentResponse>>> getAgents(Authentication auth) {
         Long userId = Long.parseLong(auth.getName());
-        var agents = agentService.getAgents(userId).stream()
+        List<AgentResponse> agents = agentService.getAgents(userId).stream()
                 .map(AgentResponse::from)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(agents));
@@ -32,7 +33,7 @@ public class AgentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AgentResponse>> getAgent(@PathVariable Long id) {
-        var agent = agentService.getAgent(id);
+        Agent agent = agentService.getAgent(id);
         return ResponseEntity.ok(ApiResponse.success(AgentResponse.from(agent)));
     }
 
@@ -40,7 +41,7 @@ public class AgentController {
     public ResponseEntity<ApiResponse<AgentResponse>> createAgent(
             Authentication auth, @Valid @RequestBody AgentCreateRequest request) {
         Long userId = Long.parseLong(auth.getName());
-        var agent = agentService.createAgent(userId, request);
+        Agent agent = agentService.createAgent(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(AgentResponse.from(agent)));
     }
@@ -48,7 +49,7 @@ public class AgentController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AgentResponse>> updateAgent(
             @PathVariable Long id, @Valid @RequestBody AgentUpdateRequest request) {
-        var agent = agentService.updateAgent(id, request);
+        Agent agent = agentService.updateAgent(id, request);
         return ResponseEntity.ok(ApiResponse.success(AgentResponse.from(agent)));
     }
 

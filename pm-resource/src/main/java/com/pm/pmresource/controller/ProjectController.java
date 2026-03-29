@@ -1,5 +1,6 @@
 package com.pm.pmresource.controller;
 
+import com.pm.pmresource.domain.entity.Project;
 import com.pm.pmresource.dto.request.ProjectCreateRequest;
 import com.pm.pmresource.dto.request.ProjectUpdateRequest;
 import com.pm.pmresource.dto.response.ApiResponse;
@@ -24,7 +25,7 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getProjects(Authentication auth) {
         Long userId = Long.parseLong(auth.getName());
-        var projects = projectService.getProjectsWithDocumentCount(userId);
+        List<ProjectResponse> projects = projectService.getProjectsWithDocumentCount(userId);
         return ResponseEntity.ok(ApiResponse.success(projects));
     }
 
@@ -32,7 +33,7 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
             Authentication auth, @Valid @RequestBody ProjectCreateRequest request) {
         Long userId = Long.parseLong(auth.getName());
-        var project = projectService.createProject(userId, request);
+        Project project = projectService.createProject(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(ProjectResponse.from(project)));
     }
@@ -42,7 +43,7 @@ public class ProjectController {
             @PathVariable Long id, Authentication auth,
             @Valid @RequestBody ProjectUpdateRequest request) {
         Long userId = Long.parseLong(auth.getName());
-        var project = projectService.updateProject(id, userId, request);
+        Project project = projectService.updateProject(id, userId, request);
         return ResponseEntity.ok(ApiResponse.success(ProjectResponse.from(project)));
     }
 }

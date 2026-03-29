@@ -1,5 +1,6 @@
 package com.pm.pmworkflow.controller;
 
+import com.pm.pmworkflow.domain.entity.WorkflowExecution;
 import com.pm.pmworkflow.domain.repository.WorkflowExecutionRepository;
 import com.pm.pmworkflow.dto.response.ApiResponse;
 import com.pm.pmworkflow.exception.WorkflowException;
@@ -16,7 +17,7 @@ public class WorkflowController {
 
     @GetMapping("/executions/{id}")
     public ResponseEntity<ApiResponse<?>> getExecution(@PathVariable Long id) {
-        var execution = workflowExecutionRepository.findById(id)
+        WorkflowExecution execution = workflowExecutionRepository.findById(id)
                 .orElseThrow(() -> WorkflowException.notFound("워크플로우 실행"));
         return ResponseEntity.ok(ApiResponse.success(execution));
     }
