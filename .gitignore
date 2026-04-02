@@ -30,3 +30,4 @@ run_python.sh
 .env.local
 .env.*.local
 k6/.env
+k8s/secret.yaml

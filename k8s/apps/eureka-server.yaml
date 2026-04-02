@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eureka-server
+  template:
+    metadata:
+      labels:
+        app: eureka-server
+    spec:
+      containers:
+      - name: eureka-server
+        image: pm-eureka-server:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8761
+        env:
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: logs
+          mountPath: /logs
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8761
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8761
+          initialDelaySeconds: 60
+          periodSeconds: 15
+      volumes:
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/eureka-server
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+  namespace: pm-msa
+spec:
+  selector:
+    app: eureka-server
+  ports:
+  - port: 8761
+    targetPort: 8761

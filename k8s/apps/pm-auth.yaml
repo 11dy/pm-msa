@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pm-auth
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pm-auth
+  template:
+    metadata:
+      labels:
+        app: pm-auth
+    spec:
+      containers:
+      - name: pm-auth
+        image: pm-auth:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: JWT_SECRET
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: DB_PASSWORD
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: SPRING_DATASOURCE_URL_DY
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: "update"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: GOOGLE_CLIENT_ID
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: GOOGLE_CLIENT_SECRET
+        - name: KAKAO_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: KAKAO_CLIENT_ID
+        - name: KAKAO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: KAKAO_CLIENT_SECRET
+        - name: NAVER_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: NAVER_CLIENT_ID
+        - name: NAVER_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: NAVER_CLIENT_SECRET
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: logs
+          mountPath: /logs
+      volumes:
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/pm-auth
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pm-auth
+  namespace: pm-msa
+spec:
+  selector:
+    app: pm-auth
+  ports:
+  - port: 8081
+    targetPort: 8081

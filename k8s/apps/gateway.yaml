@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+      - name: gateway
+        image: pm-gateway:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: JWT_SECRET
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: logs
+          mountPath: /logs
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/gateway
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: pm-msa
+spec:
+  type: NodePort
+  selector:
+    app: gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080

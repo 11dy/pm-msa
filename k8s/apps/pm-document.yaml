@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: document-uploads-pvc
+  namespace: pm-msa
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pm-document
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pm-document
+  template:
+    metadata:
+      labels:
+        app: pm-document
+    spec:
+      containers:
+      - name: pm-document
+        image: pm-document:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8082
+        env:
+        - name: EUREKA_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: EUREKA_SERVER
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: PM_WORKFLOW_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: PM_WORKFLOW_URL
+        - name: UPLOAD_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: UPLOAD_DIR
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: logs
+          mountPath: /logs
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: document-uploads-pvc
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/pm-document
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pm-document
+  namespace: pm-msa
+spec:
+  selector:
+    app: pm-document
+  ports:
+  - port: 8082
+    targetPort: 8082

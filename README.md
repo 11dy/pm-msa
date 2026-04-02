@@ -181,6 +181,47 @@ npm run dev
 # - 프론트엔드: http://localhost:3000
 ```
 
+## Kubernetes (로컬)
+
+Docker Desktop Kubernetes를 사용한 로컬 클러스터 배포입니다.
+
+### 사전 준비
+- Docker Desktop에서 Kubernetes 활성화
+- `k8s/secret.yaml` 생성 (`.gitignore` 대상, `k8s/secret.yaml`을 참고하여 실제 값 입력)
+
+### 이미지 빌드 & 배포
+
+```bash
+# 1. 전체 이미지 빌드
+./k8s/build.sh
+
+# 2. 특정 서비스만 빌드
+./k8s/build.sh pm-auth
+
+# 3. K8s 배포
+./k8s/deploy.sh
+
+# 4. 상태 확인
+./k8s/deploy.sh status
+
+# 5. 전체 삭제
+./k8s/deploy.sh delete
+```
+
+### 접속 정보
+
+| 서비스 | URL |
+|--------|-----|
+| Gateway | http://localhost:30080 |
+| Web | http://localhost:30000 |
+
+### 코드 수정 후 재배포
+
+```bash
+./k8s/build.sh pm-auth                    # 변경된 서비스만 빌드
+kubectl rollout restart deployment/pm-auth -n pm-msa  # Pod 재시작
+```
+
 ## 빌드
 
 ```bash
