@@ -36,8 +36,7 @@ spec:
         - name: logs
           mountPath: /logs
         readinessProbe:
-          httpGet:
-            path: /actuator/health
+          tcpSocket:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
