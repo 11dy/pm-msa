@@ -11,6 +11,7 @@ resources:
   - infra/mysql.yaml
   - infra/redis.yaml
   - infra/kafka.yaml
+  - infra/kafka-ui.yaml
   # apps
   - apps/eureka-server.yaml
   - apps/gateway.yaml
