@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pm-agent
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pm-agent
+  template:
+    metadata:
+      labels:
+        app: pm-agent
+    spec:
+      containers:
+      - name: pm-agent
+        image: pm-agent:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8083
+        env:
+        - name: EUREKA_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: EUREKA_SERVER
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: OPENAI_API_KEY
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: SUPABASE_URL
+        - name: SUPABASE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: SUPABASE_KEY
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: logs
+          mountPath: /logs
+      volumes:
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/pm-agent
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pm-agent
+  namespace: pm-msa
+spec:
+  selector:
+    app: pm-agent
+  ports:
+  - port: 8083
+    targetPort: 8083

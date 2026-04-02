@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pm-config
+  namespace: pm-msa
+data:
+  # Eureka
+  EUREKA_SERVER: "http://eureka-server:8761/eureka"
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka-server:8761/eureka/"
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+
+  # MySQL
+  SPRING_DATASOURCE_URL_DY: "jdbc:mysql://mysql:3306/dy_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
+  SPRING_DATASOURCE_URL_WORKFLOW: "jdbc:mysql://mysql:3306/pm_workflow?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul"
+
+  # pm-document
+  PM_WORKFLOW_URL: "http://pm-workflow:8084"
+  UPLOAD_DIR: "/app/uploads"
+
+  # pm-web
+  NEXT_PUBLIC_API_BASE_URL: "http://localhost:8080"

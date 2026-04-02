@@ -1,5 +1,8 @@
 import logging
+import os
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -7,10 +10,17 @@ from app.api import documents, health
 from app.config import settings
 from app.kafka.producer import close_producer
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+_log_fmt = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+logging.basicConfig(level=logging.INFO, format=_log_fmt)
+
+_log_dir = os.environ.get("LOG_DIR", "./logs")
+Path(_log_dir).mkdir(parents=True, exist_ok=True)
+_file_handler = RotatingFileHandler(
+    f"{_log_dir}/pm-document.log", maxBytes=10_000_000, backupCount=7
 )
+_file_handler.setFormatter(logging.Formatter(_log_fmt))
+logging.getLogger().addHandler(_file_handler)
+
 logger = logging.getLogger(__name__)
 
 _eureka_client = None

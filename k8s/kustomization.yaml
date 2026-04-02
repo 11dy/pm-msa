@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pm-msa
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  # infra
+  - infra/mysql.yaml
+  - infra/redis.yaml
+  - infra/kafka.yaml
+  # apps
+  - apps/eureka-server.yaml
+  - apps/gateway.yaml
+  - apps/pm-auth.yaml
+  - apps/pm-document.yaml
+  - apps/pm-agent.yaml
+  - apps/pm-workflow.yaml
+  - apps/pm-resource.yaml
+  - apps/pm-web.yaml

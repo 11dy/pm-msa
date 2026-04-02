@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pm-workflow
+  namespace: pm-msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pm-workflow
+  template:
+    metadata:
+      labels:
+        app: pm-workflow
+    spec:
+      containers:
+      - name: pm-workflow
+        image: pm-workflow:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8084
+        env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pm-secret
+              key: DB_PASSWORD
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: SPRING_DATASOURCE_URL_WORKFLOW
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: "update"
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: pm-config
+              key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        - name: LOG_DIR
+          value: /logs
+        volumeMounts:
+        - name: logs
+          mountPath: /logs
+      volumes:
+      - name: logs
+        hostPath:
+          path: /Users/idong-yeol/dev/pm-logs/pm-workflow
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pm-workflow
+  namespace: pm-msa
+spec:
+  selector:
+    app: pm-workflow
+  ports:
+  - port: 8084
+    targetPort: 8084
