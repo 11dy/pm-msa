@@ -78,48 +78,30 @@ pm-msa/
 
 ## 아키텍처
 
-```
-┌─────────────────┐
-│  Client (브라우저) │
-│  pm-web :3000    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    Gateway      │ :8080 (API 진입점)
-│   (WebFlux)     │
-└────────┬────────┘
-         │ 서비스 조회
-         ▼
-┌─────────────────┐
-│  Eureka Server  │ :8761 (서비스 레지스트리)
-└─────────────────┘
-         ▲
-         │ 서비스 등록
-┌────────┴────────────────────┐
-│                             │
-│  pm-auth :8081              │
-│  (인증/인가)                 │
-│                             │
-│  pm-resource :8085          │
-│  (프로젝트 CRUD)             │
-│                             │
-│  pm-document :8082          │
-│  (문서 업로드/파싱)           │
-│                             │
-│  pm-agent :8083             │
-│  (AI 에이전트, RAG 채팅)     │
-│                             │
-│  pm-workflow :8084           │
-│  (워크플로우, 대화, 문서)     │
-│                             │
-└─────────────────────────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
- Kafka     Supabase
- :9092     (Vector DB)
-```
+### AS-IS → TO-BE
+
+리팩토링 진행중 - 불필요한 모듈 병합 (pm-resource → pm-workflow)
+
+<table>
+<tr>
+<td align="center"><b>AS-IS (현재)</b></td>
+<td align="center"><b>TO-BE (목표)</b></td>
+</tr>
+<tr>
+<td><img src="docs/architecture-as-is.png" alt="AS-IS Architecture" width="100%"></td>
+<td><img src="docs/architecture-to-be.png" alt="TO-BE Architecture" width="100%"></td>
+</tr>
+<tr>
+<td>7 Services | 동기 HTTP 3개 | dy_db 공유</td>
+<td>6 Services | 동기 HTTP 1개 | DB 독립</td>
+</tr>
+</table>
+
+**주요 변경점:**
+- `pm-resource` → `pm-workflow`에 흡수 (프로젝트 도메인 통합)
+- 동기 HTTP 호출 2개 제거 (pm-document → pm-resource, pm-workflow → pm-resource)
+- `dy_db` → pm-auth 전용으로 DB 독립성 확보
+- `project_document` 중복 테이블 제거
 
 ## 포트 정보
 
