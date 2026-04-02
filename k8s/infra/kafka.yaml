@@ -51,35 +51,23 @@ spec:
       labels:
         app: kafka
     spec:
+      enableServiceLinks: false
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:7.5.0
         ports:
-        - containerPort: 29092
         - containerPort: 9092
         env:
         - name: KAFKA_BROKER_ID
           value: "1"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "zookeeper:2181"
-        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-          value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
-        - name: KAFKA_LISTENERS
-          value: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092"
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
-        - name: KAFKA_INTER_BROKER_LISTENER_NAME
-          value: "INTERNAL"
+          value: "PLAINTEXT://kafka:9092"
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
           value: "1"
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
           value: "true"
-        readinessProbe:
-          exec:
-            command: ["kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-          initialDelaySeconds: 20
-          periodSeconds: 10
-          timeoutSeconds: 5
 ---
 apiVersion: v1
 kind: Service
@@ -90,9 +78,9 @@ spec:
   selector:
     app: kafka
   ports:
-  - name: internal
-    port: 29092
-    targetPort: 29092
-  - name: external
+  - name: broker
     port: 9092
+    targetPort: 9092
+  - name: broker-compat
+    port: 29092
     targetPort: 9092

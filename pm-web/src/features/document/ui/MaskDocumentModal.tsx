@@ -145,7 +145,7 @@ export function MaskDocumentModal({ isOpen, onClose }: MaskDocumentModalProps) {
   const isProcessing = phase === 'progress' || phase === 'done';
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isProcessing ? undefined : 'PII 마스킹 다운로드'}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={isProcessing ? '' : 'PII 마스킹 다운로드'}>
       {phase === 'select' && (
         <>
           <p className="text-xs text-muted mb-2">
