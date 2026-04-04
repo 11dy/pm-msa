@@ -24,6 +24,10 @@ spec:
       labels:
         app: pm-document
     spec:
+      dnsConfig:
+        options:
+        - name: ndots
+          value: "2"
       containers:
       - name: pm-document
         image: pm-document:latest
