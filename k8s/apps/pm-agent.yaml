@@ -13,6 +13,10 @@ spec:
       labels:
         app: pm-agent
     spec:
+      dnsConfig:
+        options:
+        - name: ndots
+          value: "2"
       containers:
       - name: pm-agent
         image: pm-agent:latest

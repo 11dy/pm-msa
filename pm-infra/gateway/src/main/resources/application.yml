@@ -58,6 +58,31 @@ spring:
               uri: lb://PM-WORKFLOW
               predicates:
                 - Path=/api/workflow-health/**
+            # health (서비스별 헬스체크 — Gateway 경유)
+            - id: pm-agent-health
+              uri: lb://PM-AGENT
+              predicates:
+                - Path=/api/health/agent
+              filters:
+                - SetPath=/health
+            - id: pm-document-health
+              uri: lb://PM-DOCUMENT
+              predicates:
+                - Path=/api/health/document
+              filters:
+                - SetPath=/health
+            - id: pm-auth-health
+              uri: lb://PM-AUTH
+              predicates:
+                - Path=/api/health/auth
+              filters:
+                - SetPath=/health
+            - id: pm-workflow-health
+              uri: lb://PM-WORKFLOW
+              predicates:
+                - Path=/api/health/workflow
+              filters:
+                - SetPath=/health
             # pm-agent
             - id: pm-agent-chat
               uri: lb://PM-AGENT

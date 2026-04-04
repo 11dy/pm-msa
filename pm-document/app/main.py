@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -31,11 +32,13 @@ async def _register_eureka() -> None:
     try:
         import py_eureka_client.eureka_client as eureka_client
 
+        instance_ip = socket.gethostbyname(socket.gethostname())
         await eureka_client.init_async(
             eureka_server=settings.eureka_server,
             app_name="PM-DOCUMENT",
             instance_port=settings.app_port,
-            instance_ip="127.0.0.1",
+            instance_host=instance_ip,
+            instance_ip=instance_ip,
         )
         _eureka_client = eureka_client
         logger.info("Registered with Eureka: %s", settings.eureka_server)
