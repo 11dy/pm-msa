@@ -148,9 +148,32 @@ npm run dev
 Docker Desktop Kubernetes를 사용한 로컬 클러스터 배포입니다.
 인프라(MySQL, Kafka, Redis)는 Docker Compose로, 앱 서비스만 K8s에 배포합니다.
 
+### 통신 구조
+
+IntelliJ 로컬 개발과 K8s 배포 모두 **동일한 포트**로 접근합니다.
+
+```
+┌─ IntelliJ 로컬 개발 ──────────────────────────────┐
+│  브라우저 → localhost:3000 (npm run dev)            │
+│          → localhost:8080 (Gateway bootRun)        │
+│  인프라   → Docker Compose (MySQL, Kafka, Redis)   │
+└────────────────────────────────────────────────────┘
+
+┌─ K8s 배포 ─────────────────────────────────────────┐
+│  브라우저 → localhost:3000 (LoadBalancer → pm-web)   │
+│          → localhost:8080 (LoadBalancer → gateway)  │
+│  인프라   → Docker Compose (MySQL, Kafka, Redis)    │
+│  K8s Pod → host.docker.internal으로 인프라 접근      │
+└─────────────────────────────────────────────────────┘
+```
+
+- Gateway, pm-web: `LoadBalancer` 타입 (Docker Desktop이 localhost에 직접 매핑)
+- 나머지 서비스: `ClusterIP` (K8s 내부 통신, Eureka 서비스 디스커버리)
+- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080` — 양쪽 동일
+
 ### 사전 준비
 - Docker Desktop에서 Kubernetes 활성화
-- `k8s/secret.yaml` 생성 (`.gitignore` 대상, `k8s/secret.yaml`을 참고하여 실제 값 입력)
+- `k8s/secret.yaml` 생성 (`.gitignore` 대상)
 - Docker Compose 인프라 실행: `docker compose up -d`
 
 ### 이미지 빌드 & 배포
@@ -163,21 +186,22 @@ Docker Desktop Kubernetes를 사용한 로컬 클러스터 배포입니다.
 ./k8s/build.sh pm-auth
 
 # 3. K8s 배포
-./k8s/deploy.sh
+kubectl apply -k k8s/
 
 # 4. 상태 확인
-./k8s/deploy.sh status
+kubectl get pods -n pm-msa
 
 # 5. 전체 삭제
-./k8s/deploy.sh delete
+kubectl delete all --all -n pm-msa
 ```
 
 ### 접속 정보
 
-| 서비스 | URL |
-|--------|-----|
-| Gateway | http://localhost:30080 |
-| Web | http://localhost:30000 |
+| 서비스 | URL | 비고 |
+|--------|-----|------|
+| 프론트엔드 | http://localhost:3000 | IntelliJ / K8s 동일 |
+| API (Gateway) | http://localhost:8080 | IntelliJ / K8s 동일 |
+| Kafka UI | http://localhost:8090 | Docker Compose |
 
 ### 코드 수정 후 재배포
 

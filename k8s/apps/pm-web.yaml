@@ -32,10 +32,9 @@ metadata:
   name: pm-web
   namespace: pm-msa
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: pm-web
   ports:
   - port: 3000
     targetPort: 3000
-    nodePort: 30000
