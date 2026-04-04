@@ -7,17 +7,11 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - secret.yaml
-  # infra
-  - infra/mysql.yaml
-  - infra/redis.yaml
-  - infra/kafka.yaml
-  - infra/kafka-ui.yaml
-  # apps
+  # apps (인프라는 Docker Compose로 운영)
   - apps/eureka-server.yaml
   - apps/gateway.yaml
   - apps/pm-auth.yaml
   - apps/pm-document.yaml
   - apps/pm-agent.yaml
   - apps/pm-workflow.yaml
-  - apps/pm-resource.yaml
   - apps/pm-web.yaml

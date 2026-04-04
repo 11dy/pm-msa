@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     eureka_server: str = "http://localhost:8761/eureka"
     kafka_bootstrap_servers: str = "localhost:9092"
     pm_workflow_url: str = "http://localhost:8084"
-    pm_resource_url: str = "http://localhost:8085"
     upload_dir: str = "./uploads"
 
     # 청킹 설정

@@ -20,7 +20,7 @@ LangGraph 상태머신 기반 AI 채팅 시스템. 질문을 자동 분류(rag/g
 업로드한 문서의 PII를 마스킹하여 다운로드할 수 있습니다. PDF/DOCX는 원본 포맷을 유지하고, Excel은 시트별 CSV 스냅샷으로 변환됩니다 (숨김 시트 자동 제외). 마스킹된 파일과 PII 대조표를 ZIP으로 반환합니다.
 
 ### 6. MSA 인프라
-Spring Cloud Eureka + Gateway로 7개 서비스 오케스트레이션. Kafka 이벤트 드리븐 아키텍처, JWT 인증 + Gateway 레벨 라우팅을 제공합니다.
+Spring Cloud Eureka + Gateway로 6개 서비스 오케스트레이션. Kafka 이벤트 드리븐 아키텍처, JWT 인증 + Gateway 레벨 라우팅을 제공합니다.
 
 ## 프로젝트 구조
 
@@ -35,16 +35,13 @@ pm-msa/
 ├── pm-auth/                      # 인증 서비스 (Spring Boot)
 │   └── src/main/
 │
-├── pm-resource/                  # 프로젝트 리소스 CRUD (Spring Boot)
-│   └── src/main/
-│
 ├── pm-document/                  # 문서 처리 서비스 (FastAPI)
 │   └── app/
 │
 ├── pm-agent/                     # AI 에이전트 서비스 (FastAPI + LangGraph)
 │   └── app/
 │
-├── pm-workflow/                  # 워크플로우 서비스 (Spring Boot)
+├── pm-workflow/                  # 프로젝트 + 워크플로우 서비스 (Spring Boot)
 │   └── src/main/
 │
 └── pm-web/                       # 프론트엔드 (Next.js)
@@ -57,10 +54,9 @@ pm-msa/
 |------|------|------|
 | `pm-infra` | Spring Cloud | 인프라 (Eureka, Gateway) |
 | `pm-auth` | Spring Boot | 인증/인가 서비스 (JWT, OAuth2) |
-| `pm-resource` | Spring Boot | 프로젝트 CRUD 서비스 |
 | `pm-document` | FastAPI | 문서 업로드, 파싱, 청킹 서비스 |
 | `pm-agent` | FastAPI + LangGraph | AI 에이전트 서비스 (RAG, 채팅) |
-| `pm-workflow` | Spring Boot | 워크플로우 서비스 (에이전트 관리, 대화, 문서 메타데이터) |
+| `pm-workflow` | Spring Boot | 프로젝트 + 워크플로우 서비스 (프로젝트 관리, 에이전트, 대화, 문서 메타데이터) |
 | `pm-web` | Next.js | 프론트엔드 |
 
 ## 기술 스택
@@ -80,7 +76,7 @@ pm-msa/
 
 ### AS-IS → TO-BE
 
-리팩토링 진행중 - 불필요한 모듈 병합 (pm-resource → pm-workflow)
+pm-resource를 pm-workflow에 흡수하여 도메인 경계 정리 완료
 
 <table>
 <tr>
@@ -112,8 +108,7 @@ pm-msa/
 | pm-auth | 8081 | 인증 서비스 |
 | pm-document | 8082 | 문서 처리 서비스 |
 | pm-agent | 8083 | AI 에이전트 서비스 |
-| pm-workflow | 8084 | 워크플로우 서비스 |
-| pm-resource | 8085 | 프로젝트 리소스 서비스 |
+| pm-workflow | 8084 | 프로젝트 + 워크플로우 서비스 |
 | pm-web | 3000 | 프론트엔드 |
 | Kafka | 9092 | 메시지 브로커 |
 
@@ -134,27 +129,23 @@ cd pm-infra
 cd ../pm-auth
 DB_PASSWORD=your_password ./gradlew bootRun
 
-# 4. Resource 서비스 실행
-cd ../pm-resource
-DB_PASSWORD=your_password ./gradlew bootRun
-
-# 5. Workflow 서비스 실행
+# 4. Workflow 서비스 실행
 cd ../pm-workflow
 DB_PASSWORD=your_password ./gradlew bootRun
 
-# 6. Document 서비스 실행
+# 5. Document 서비스 실행
 cd ../pm-document
 uvicorn app.main:app --port 8082 --reload
 
-# 7. Agent 서비스 실행
+# 6. Agent 서비스 실행
 cd ../pm-agent
 uvicorn app.main:app --port 8083 --reload
 
-# 8. 프론트엔드 실행
+# 7. 프론트엔드 실행
 cd ../pm-web
 npm run dev
 
-# 9. 확인
+# 8. 확인
 # - Eureka 대시보드: http://localhost:8761
 # - Gateway: http://localhost:8080
 # - Document API 문서: http://localhost:8082/docs
@@ -166,10 +157,12 @@ npm run dev
 ## Kubernetes (로컬)
 
 Docker Desktop Kubernetes를 사용한 로컬 클러스터 배포입니다.
+인프라(MySQL, Kafka, Redis)는 Docker Compose로, 앱 서비스만 K8s에 배포합니다.
 
 ### 사전 준비
 - Docker Desktop에서 Kubernetes 활성화
 - `k8s/secret.yaml` 생성 (`.gitignore` 대상, `k8s/secret.yaml`을 참고하여 실제 값 입력)
+- Docker Compose 인프라 실행: `docker compose up -d`
 
 ### 이미지 빌드 & 배포
 
@@ -213,10 +206,6 @@ cd pm-infra
 
 # Auth 서비스 빌드
 cd pm-auth
-./gradlew build
-
-# Resource 서비스 빌드
-cd pm-resource
 ./gradlew build
 
 # Workflow 서비스 빌드

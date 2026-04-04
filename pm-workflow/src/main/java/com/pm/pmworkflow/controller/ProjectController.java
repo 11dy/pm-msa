@@ -1,11 +1,11 @@
-package com.pm.pmresource.controller;
+package com.pm.pmworkflow.controller;
 
-import com.pm.pmresource.domain.entity.Project;
-import com.pm.pmresource.dto.request.ProjectCreateRequest;
-import com.pm.pmresource.dto.request.ProjectUpdateRequest;
-import com.pm.pmresource.dto.response.ApiResponse;
-import com.pm.pmresource.dto.response.ProjectResponse;
-import com.pm.pmresource.service.ProjectService;
+import com.pm.pmworkflow.domain.entity.Project;
+import com.pm.pmworkflow.dto.request.ProjectCreateRequest;
+import com.pm.pmworkflow.dto.request.ProjectUpdateRequest;
+import com.pm.pmworkflow.dto.response.ApiResponse;
+import com.pm.pmworkflow.dto.response.ProjectResponse;
+import com.pm.pmworkflow.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

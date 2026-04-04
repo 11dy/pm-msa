@@ -67,13 +67,9 @@ spring:
               uri: lb://PM-AGENT
               predicates:
                 - Path=/agent/pii/**
-            # pm-resource
-            - id: pm-resource-project-document
-              uri: lb://PM-RESOURCE
-              predicates:
-                - Path=/api/project-document/**
-            - id: pm-resource-project
-              uri: lb://PM-RESOURCE
+            # pm-workflow (project)
+            - id: pm-workflow-project
+              uri: lb://PM-WORKFLOW
               predicates:
                 - Path=/api/project/**
 

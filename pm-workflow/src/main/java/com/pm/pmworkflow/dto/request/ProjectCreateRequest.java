@@ -1,4 +1,4 @@
-package com.pm.pmresource.dto.request;
+package com.pm.pmworkflow.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

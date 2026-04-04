@@ -8,4 +8,5 @@ import java.util.List;
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByUserIdAndActStOrderByCreatedAtDesc(Long userId, String actSt);
     List<Document> findByProjectIdAndActStOrderByCreatedAtDesc(Long projectId, String actSt);
+    int countByProjectIdAndActSt(Long projectId, String actSt);
 }

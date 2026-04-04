@@ -1,6 +1,6 @@
-package com.pm.pmresource.domain.repository;
+package com.pm.pmworkflow.domain.repository;
 
-import com.pm.pmresource.domain.entity.Project;
+import com.pm.pmworkflow.domain.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

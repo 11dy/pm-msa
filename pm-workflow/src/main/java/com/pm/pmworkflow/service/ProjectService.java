@@ -1,11 +1,12 @@
-package com.pm.pmresource.service;
+package com.pm.pmworkflow.service;
 
-import com.pm.pmresource.domain.entity.Project;
-import com.pm.pmresource.domain.repository.ProjectRepository;
-import com.pm.pmresource.dto.request.ProjectCreateRequest;
-import com.pm.pmresource.dto.request.ProjectUpdateRequest;
-import com.pm.pmresource.dto.response.ProjectResponse;
-import com.pm.pmresource.exception.ResourceException;
+import com.pm.pmworkflow.domain.entity.Project;
+import com.pm.pmworkflow.domain.repository.DocumentRepository;
+import com.pm.pmworkflow.domain.repository.ProjectRepository;
+import com.pm.pmworkflow.dto.request.ProjectCreateRequest;
+import com.pm.pmworkflow.dto.request.ProjectUpdateRequest;
+import com.pm.pmworkflow.dto.response.ProjectResponse;
+import com.pm.pmworkflow.exception.WorkflowException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,13 +19,13 @@ import java.util.List;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-    private final ProjectDocumentService projectDocumentService;
+    private final DocumentRepository documentRepository;
 
     public List<ProjectResponse> getProjectsWithDocumentCount(Long userId) {
         return projectRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(project -> ProjectResponse.from(
                         project,
-                        projectDocumentService.getDocumentCount(project.getId())))
+                        documentRepository.countByProjectIdAndActSt(project.getId(), "ACTIVATE")))
                 .toList();
     }
 
@@ -45,9 +46,9 @@ public class ProjectService {
     @Transactional
     public Project updateProject(Long id, Long userId, ProjectUpdateRequest request) {
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> ResourceException.notFound("프로젝트"));
+                .orElseThrow(() -> WorkflowException.notFound("프로젝트"));
         if (!project.getUserId().equals(userId)) {
-            throw ResourceException.forbidden();
+            throw WorkflowException.forbidden();
         }
         project.update(request.getName(), request.getDescription());
         return project;

@@ -1,6 +1,6 @@
-package com.pm.pmresource.dto.response;
+package com.pm.pmworkflow.dto.response;
 
-import com.pm.pmresource.domain.entity.Project;
+import com.pm.pmworkflow.domain.entity.Project;
 import lombok.Builder;
 import lombok.Getter;
 

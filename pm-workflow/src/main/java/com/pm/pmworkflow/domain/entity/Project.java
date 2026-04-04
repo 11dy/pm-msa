@@ -1,4 +1,4 @@
-package com.pm.pmresource.domain.entity;
+package com.pm.pmworkflow.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
