@@ -76,28 +76,19 @@ pm-msa/
 
 ### AS-IS → TO-BE
 
-pm-resource를 pm-workflow에 흡수하여 도메인 경계 정리 완료
+6개 서비스 | 동기 HTTP 1개 | DB per Service | K8s(앱) + Docker Compose(인프라)
 
-<table>
-<tr>
-<td align="center"><b>AS-IS (현재)</b></td>
-<td align="center"><b>TO-BE (목표)</b></td>
-</tr>
-<tr>
-<td><img src="docs/architecture-as-is.png" alt="AS-IS Architecture" width="100%"></td>
-<td><img src="docs/architecture-to-be.png" alt="TO-BE Architecture" width="100%"></td>
-</tr>
-<tr>
-<td>7 Services | 동기 HTTP 3개 | dy_db 공유</td>
-<td>6 Services | 동기 HTTP 1개 | DB 독립</td>
-</tr>
-</table>
+<img src="docs/architecture.png" alt="PM-MSA Architecture" width="100%">
 
-**주요 변경점:**
-- `pm-resource` → `pm-workflow`에 흡수 (프로젝트 도메인 통합)
-- 동기 HTTP 호출 2개 제거 (pm-document → pm-resource, pm-workflow → pm-resource)
-- `dy_db` → pm-auth 전용으로 DB 독립성 확보
-- `project_document` 중복 테이블 제거
+**인프라 구성:**
+- **K8s**: 앱 서비스만 배포 (Eureka, Gateway, pm-auth, pm-document, pm-agent, pm-workflow, pm-web)
+- **Docker Compose**: Stateful 인프라 (MySQL, Kafka, Zookeeper, Redis)
+- K8s Pod → Docker Compose 인프라 접근: `host.docker.internal`
+
+**DB per Service:**
+- `dy_db` → pm-auth 전용 (users, user_auth, refresh_tokens)
+- `pm_workflow` → pm-workflow 전용 (project, documents, agents, conversations, ...)
+- `Supabase pgvector` → pm-agent 전용 (document_chunks)
 
 ## 포트 정보
 
