@@ -26,7 +26,6 @@ if [ -n "$1" ]; then
     pm-document)   build_image pm-document pm-document pm-document/Dockerfile ;;
     pm-agent)      build_image pm-agent pm-agent pm-agent/Dockerfile ;;
     pm-workflow)   build_image pm-workflow pm-workflow pm-workflow/Dockerfile ;;
-    pm-resource)   build_image pm-resource pm-resource pm-resource/Dockerfile ;;
     pm-web)        build_image pm-web pm-web pm-web/Dockerfile ;;
     *) echo "Unknown service: $1"; exit 1 ;;
   esac
@@ -38,7 +37,6 @@ else
   build_image pm-document     pm-document pm-document/Dockerfile
   build_image pm-agent        pm-agent pm-agent/Dockerfile
   build_image pm-workflow     pm-workflow pm-workflow/Dockerfile
-  build_image pm-resource     pm-resource pm-resource/Dockerfile
   build_image pm-web          pm-web pm-web/Dockerfile
   echo "======== 전체 빌드 완료 ========"
 fi

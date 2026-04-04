@@ -54,25 +54,7 @@ async def upload_document(user_id: int, file: UploadFile, project_id: int | None
     document_id = doc_response.id
     logger.info("Document registered: id=%d, file=%s", document_id, original_filename)
 
-    # 3. pm-resource에 project_document 등록 (project_id가 있을 때만)
-    if project_id is not None:
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                await client.post(
-                    f"{settings.pm_resource_url}/api/project-document/internal/register",
-                    json={
-                        "projectId": project_id,
-                        "documentId": document_id,
-                        "originalFilename": original_filename,
-                        "fileType": ext.lstrip("."),
-                        "fileSize": file_size,
-                    },
-                )
-            logger.info("ProjectDocument registered: projectId=%s, documentId=%d", project_id, document_id)
-        except Exception as e:
-            logger.warning("Failed to register project_document (non-fatal): %s", e)
-
-    # 4. document.uploaded 이벤트 발행
+    # 3. document.uploaded 이벤트 발행
     publish_event(DOCUMENT_EVENTS_TOPIC, {
         "type": "document.uploaded",
         "documentId": document_id,
