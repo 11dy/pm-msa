@@ -22,6 +22,22 @@ LangGraph 상태머신 기반 AI 채팅 시스템. 질문을 자동 분류(rag/g
 ### 6. MSA 인프라
 Spring Cloud Eureka + Gateway로 6개 서비스 오케스트레이션. Kafka 이벤트 드리븐 아키텍처, JWT 인증 + Gateway 레벨 라우팅을 제공합니다.
 
+## 아키텍처
+
+6개 서비스 | 동기 HTTP 1개 | DB per Service | K8s(앱) + Docker Compose(인프라)
+
+<img src="docs/architecture.png" alt="PM-MSA Architecture" width="100%">
+
+**인프라 구성:**
+- **K8s**: 앱 서비스만 배포 (Eureka, Gateway, pm-auth, pm-document, pm-agent, pm-workflow, pm-web)
+- **Docker Compose**: Stateful 인프라 (MySQL, Kafka, Zookeeper, Redis)
+- K8s Pod → Docker Compose 인프라 접근: `host.docker.internal`
+
+**DB per Service:**
+- `dy_db` → pm-auth 전용 (users, user_auth, refresh_tokens)
+- `pm_workflow` → pm-workflow 전용 (project, documents, agents, conversations, ...)
+- `Supabase pgvector` → pm-agent 전용 (document_chunks)
+
 ## 프로젝트 구조
 
 ```
@@ -71,24 +87,6 @@ pm-msa/
 | FastAPI | 0.115.x |
 | LangChain / LangGraph | 0.3.x / 0.2.x |
 | Next.js | 16.x |
-
-## 아키텍처
-
-### AS-IS → TO-BE
-
-6개 서비스 | 동기 HTTP 1개 | DB per Service | K8s(앱) + Docker Compose(인프라)
-
-<img src="docs/architecture.png" alt="PM-MSA Architecture" width="100%">
-
-**인프라 구성:**
-- **K8s**: 앱 서비스만 배포 (Eureka, Gateway, pm-auth, pm-document, pm-agent, pm-workflow, pm-web)
-- **Docker Compose**: Stateful 인프라 (MySQL, Kafka, Zookeeper, Redis)
-- K8s Pod → Docker Compose 인프라 접근: `host.docker.internal`
-
-**DB per Service:**
-- `dy_db` → pm-auth 전용 (users, user_auth, refresh_tokens)
-- `pm_workflow` → pm-workflow 전용 (project, documents, agents, conversations, ...)
-- `Supabase pgvector` → pm-agent 전용 (document_chunks)
 
 ## 포트 정보
 
