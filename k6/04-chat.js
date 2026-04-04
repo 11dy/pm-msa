@@ -42,7 +42,7 @@ export default function (data) {
 
   // 채팅 (non-streaming — k6는 SSE 네이티브 미지원이므로 stream=false)
   const res = http.post(
-    `${BASE_URL}/api/chat/message`,
+    `${BASE_URL}/agent/chat/message`,
     JSON.stringify({
       question,
       user_id: 1,
