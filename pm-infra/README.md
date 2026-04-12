@@ -39,7 +39,7 @@ pm-infra/
 | Java | 25 |
 | Spring Boot | 4.0.2 |
 | Spring Cloud | 2025.1.0 (Oakwood) |
-| Gradle | 9.3.0 |
+| Gradle | 9.4.1 |
 
 ## 의존성
 
@@ -92,7 +92,6 @@ pm-infra/
          │ 서비스 등록
 ┌────────┴────────────────────┐
 │  pm-auth :8081              │
-│  pm-resource :8085          │
 │  pm-document :8082          │
 │  pm-agent :8083             │
 │  pm-workflow :8084          │
@@ -132,7 +131,7 @@ Gateway에서 JWT 토큰을 검증하고 사용자 정보를 헤더에 추가하
 | `/login/oauth2/**` | PM-AUTH |
 | `POST /api/documents/upload` | PM-DOCUMENT |
 | `GET/DELETE /api/documents/**` | PM-WORKFLOW |
-| `/api/project/**` | PM-RESOURCE |
+| `/api/project/**` | PM-WORKFLOW |
 | `/api/agents/**` | PM-WORKFLOW |
 | `/api/conversations/**` | PM-WORKFLOW |
 | `/api/workflows/**` | PM-WORKFLOW |

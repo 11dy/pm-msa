@@ -72,7 +72,7 @@ k6/
 
 필요 서비스: Eureka, Gateway, pm-auth, MySQL
 
-### 프로젝트 CRUD (pm-resource)
+### 프로젝트 CRUD (pm-workflow)
 
 프로젝트 목록 조회 → 생성 → 수정을 반복합니다.
 
@@ -80,7 +80,7 @@ k6/
 ./k6/run.sh k6/02-project-crud.js
 ```
 
-필요 서비스: Eureka, Gateway, pm-auth, pm-resource, MySQL
+필요 서비스: Eureka, Gateway, pm-auth, pm-workflow, MySQL
 
 ### 문서 목록 + 추천 질문 (pm-workflow)
 

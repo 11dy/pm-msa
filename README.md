@@ -30,7 +30,7 @@ LangGraph 상태머신 기반 AI 채팅. 질문을 자동 분류(rag/general)하
 | **Backend (Java)** | Java | 25 |
 | | Spring Boot | 4.0.2 |
 | | Spring Cloud | 2025.1.0 |
-| | Gradle | 9.3.0 |
+| | Gradle | 9.4.1 |
 | **Backend (Python)** | Python | 3.12 |
 | | FastAPI | 0.115.6 |
 | | LangChain / LangGraph | 0.3.x / 0.2.x |
