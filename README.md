@@ -23,6 +23,12 @@ LangGraph 상태머신 기반 AI 채팅. 질문을 자동 분류(rag/general)하
 
 <img src="docs/architecture.png" alt="PM-MSA Architecture" width="100%">
 
+### Service Layer (Controller → Service → Repository → MySQL)
+
+<img src="docs/diagrams/pm-msa-architecture.png" alt="PM-MSA Service Layer Architecture" width="100%">
+
+> 인터랙티브 뷰어: [docs/diagrams/pm-msa-architecture.html](docs/diagrams/pm-msa-architecture.html) · 상세: [docs/ARCHITECTURE-DIAGRAM.md](docs/ARCHITECTURE-DIAGRAM.md)
+
 ## Tech Stack
 
 | Category | Technology | Version |
@@ -30,7 +36,7 @@ LangGraph 상태머신 기반 AI 채팅. 질문을 자동 분류(rag/general)하
 | **Backend (Java)** | Java | 25 |
 | | Spring Boot | 4.0.2 |
 | | Spring Cloud | 2025.1.0 |
-| | Gradle | 9.3.0 |
+| | Gradle | 9.4.1 |
 | **Backend (Python)** | Python | 3.12 |
 | | FastAPI | 0.115.6 |
 | | LangChain / LangGraph | 0.3.x / 0.2.x |

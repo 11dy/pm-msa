@@ -132,8 +132,8 @@ Gateway를 통해 백엔드 서비스와 통신합니다.
 | 토큰 갱신 | POST /api/auth/refresh | pm-auth |
 | 로그아웃 | POST /api/auth/logout | pm-auth |
 | OAuth2 URL | GET /api/auth/oauth2/{provider} | pm-auth |
-| 프로젝트 목록 | GET /api/project | pm-resource |
-| 프로젝트 생성 | POST /api/project | pm-resource |
+| 프로젝트 목록 | GET /api/project | pm-workflow |
+| 프로젝트 생성 | POST /api/project | pm-workflow |
 | 문서 목록 | GET /api/documents?projectId=N | pm-workflow |
 | 문서 업로드 | POST /api/documents/upload | pm-document |
 | 문서 삭제 | DELETE /api/documents/{id} | pm-workflow |

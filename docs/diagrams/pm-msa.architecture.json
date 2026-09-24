@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PM-MSA 계층 아키텍처",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "gateway", "type": "cloud", "label": "API Gateway", "sublabel": "pm-web → Eureka 라우팅", "pos": [40, 300], "size": [160, 64] },
+    { "id": "auth-ctrl", "type": "backend", "label": "Auth Controller", "sublabel": "AuthController · OAuth2Controller", "pos": [280, 180], "size": [180, 64] },
+    { "id": "auth-svc", "type": "backend", "label": "Auth Service", "sublabel": "AuthService · OAuth2Service", "pos": [540, 180], "size": [180, 64] },
+    { "id": "auth-repo", "type": "backend", "label": "Auth Repository", "sublabel": "User · UserAuth · RefreshToken", "pos": [800, 180], "size": [180, 64] },
+    { "id": "dy-db", "type": "database", "label": "MySQL dy_db", "sublabel": ":3306", "pos": [1060, 180], "size": [150, 64] },
+    { "id": "oauth", "type": "external", "label": "OAuth Providers", "sublabel": "Google · Kakao · Naver", "pos": [540, 30], "size": [180, 64] },
+    { "id": "wf-ctrl", "type": "backend", "label": "Workflow Controller", "sublabel": "Project · Conversation · Agent 외 3", "pos": [280, 420], "size": [180, 64] },
+    { "id": "wf-svc", "type": "backend", "label": "Workflow Service", "sublabel": "Project · Conversation · Agent 외 2", "pos": [540, 420], "size": [180, 64] },
+    { "id": "wf-repo", "type": "backend", "label": "Workflow Repository", "sublabel": "JPA Repository 8종", "pos": [800, 420], "size": [180, 64] },
+    { "id": "wf-db", "type": "database", "label": "MySQL pm_workflow", "sublabel": ":3306", "pos": [1060, 420], "size": [150, 64] },
+    { "id": "kafka", "type": "messagebus", "label": "Kafka", "sublabel": "pm.document / pm.workflow.events", "pos": [540, 600], "size": [180, 64] },
+    { "id": "py-ai", "type": "backend", "label": "pm-document · pm-agent", "sublabel": "FastAPI", "pos": [280, 600], "size": [180, 64] },
+    { "id": "ai-apis", "type": "external", "label": "AI / Vector APIs", "sublabel": "OpenAI · Ollama · Supabase", "pos": [40, 600], "size": [170, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "pm-auth (Spring Boot)", "wraps": ["auth-ctrl", "auth-svc", "auth-repo"] },
+    { "kind": "region", "label": "pm-workflow (Spring Boot)", "wraps": ["wf-ctrl", "wf-svc", "wf-repo"] }
+  ],
+  "connections": [
+    { "id": "gw-auth", "from": "gateway", "to": "auth-ctrl", "label": "/api/auth", "variant": "emphasis" },
+    { "id": "auth-c-s", "from": "auth-ctrl", "to": "auth-svc" },
+    { "id": "auth-s-r", "from": "auth-svc", "to": "auth-repo" },
+    { "id": "auth-r-db", "from": "auth-repo", "to": "dy-db", "label": "JPA" },
+    { "id": "auth-oauth", "from": "auth-svc", "to": "oauth", "label": "token · userinfo", "variant": "dashed" },
+    { "id": "gw-wf", "from": "gateway", "to": "wf-ctrl", "label": "/api/workflow", "variant": "emphasis" },
+    { "id": "wf-c-s", "from": "wf-ctrl", "to": "wf-svc" },
+    { "id": "wf-s-r", "from": "wf-svc", "to": "wf-repo" },
+    { "id": "wf-r-db", "from": "wf-repo", "to": "wf-db", "label": "JPA" },
+    { "id": "py-kafka", "from": "py-ai", "to": "kafka", "label": "publish" },
+    { "id": "kafka-wf", "from": "kafka", "to": "wf-svc", "label": "@KafkaListener", "variant": "dashed" },
+    { "id": "py-ai-apis", "from": "py-ai", "to": "ai-apis", "label": "LLM · 임베딩", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "계층 흐름", "items": ["Controller → Service → Repository(JPA) → MySQL", "DB 분리: dy_db(인증) / pm_workflow(업무), FK 미사용"] },
+    { "dot": "amber", "title": "외부 API", "items": ["OAuth2Client: Google · Kakao · Naver 토큰/사용자 조회", "Python 서비스: OpenAI · Ollama · Supabase pgvector"] },
+    { "dot": "violet", "title": "비동기", "items": ["pm-document/pm-agent → Kafka → WorkflowEventConsumer", "추천 질문 저장 등 Service 호출"] }
+  ]
+}

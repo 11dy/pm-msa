@@ -12,6 +12,7 @@
 
 # Claude / AI
 *.claude
+.claude/skills/
 .ai/
 CLAUDE.md
 
@@ -26,6 +27,10 @@ docs/gen_diagrams.py
 # Run scripts (local only)
 run.sh
 run_python.sh
+
+# Logs
+*.log
+logs/
 
 # Environment variables
 .env
