@@ -23,6 +23,12 @@ LangGraph 상태머신 기반 AI 채팅. 질문을 자동 분류(rag/general)하
 
 <img src="docs/architecture.png" alt="PM-MSA Architecture" width="100%">
 
+### Service Layer (Controller → Service → Repository → MySQL)
+
+<img src="docs/diagrams/pm-msa-architecture.png" alt="PM-MSA Service Layer Architecture" width="100%">
+
+> 인터랙티브 뷰어: [docs/diagrams/pm-msa-architecture.html](docs/diagrams/pm-msa-architecture.html) · 상세: [docs/ARCHITECTURE-DIAGRAM.md](docs/ARCHITECTURE-DIAGRAM.md)
+
 ## Tech Stack
 
 | Category | Technology | Version |
